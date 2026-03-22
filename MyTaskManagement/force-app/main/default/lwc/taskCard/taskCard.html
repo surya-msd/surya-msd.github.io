@@ -1,0 +1,70 @@
+<template>
+    <div class={cardClass} title="Drag to move">
+        <!-- Priority Bar -->
+        <div class={priorityBarClass}></div>
+
+        <!-- Card Header -->
+        <div class="card-header">
+            <div class="card-badges">
+                <span class={categoryBadgeClass}>{task.Category__c}</span>
+                <span class={priorityBadgeClass}>{priorityLabel}</span>
+            </div>
+            <div class="card-actions">
+                <button class="action-btn" title="Edit" onclick={handleEdit}>
+                    <lightning-icon icon-name="utility:edit" size="xx-small" alternative-text="Edit"></lightning-icon>
+                </button>
+                <button class="action-btn action-btn-danger" title="Delete" onclick={handleDelete}>
+                    <lightning-icon icon-name="utility:delete" size="xx-small" alternative-text="Delete"></lightning-icon>
+                </button>
+            </div>
+        </div>
+
+        <!-- Card Title -->
+        <h3 class="card-title">{task.Name}</h3>
+
+        <!-- Description (if any) -->
+        <template if:true={task.Description__c}>
+            <p class="card-description">{task.Description__c}</p>
+        </template>
+
+        <!-- Tags -->
+        <template if:true={hasTags}>
+            <div class="card-tags">
+                <template for:each={tagList} for:item="tag">
+                    <span key={tag} class="tag">{tag}</span>
+                </template>
+            </div>
+        </template>
+
+        <!-- Card Footer -->
+        <div class="card-footer">
+            <div class="card-meta">
+                <template if:true={task.Due_Date__c}>
+                    <span class={dueDateClass} title="Due Date">
+                        <lightning-icon icon-name="utility:event" size="xx-small" alternative-text="Due"></lightning-icon>
+                        {formattedDueDate}
+                    </span>
+                </template>
+                <template if:true={task.Assigned_To__c}>
+                    <span class="meta-item">
+                        <lightning-icon icon-name="utility:user" size="xx-small" alternative-text="Assigned To"></lightning-icon>
+                        {task.Assigned_To__c}
+                    </span>
+                </template>
+            </div>
+            <!-- Quick Status Move Buttons -->
+            <div class="quick-move">
+                <template if:true={showMoveLeft}>
+                    <button class="move-btn move-left" onclick={handleMoveLeft} title={moveLeftLabel}>
+                        <lightning-icon icon-name="utility:chevronleft" size="xx-small" alternative-text="Move left"></lightning-icon>
+                    </button>
+                </template>
+                <template if:true={showMoveRight}>
+                    <button class="move-btn move-right" onclick={handleMoveRight} title={moveRightLabel}>
+                        <lightning-icon icon-name="utility:chevronright" size="xx-small" alternative-text="Move right"></lightning-icon>
+                    </button>
+                </template>
+            </div>
+        </div>
+    </div>
+</template>

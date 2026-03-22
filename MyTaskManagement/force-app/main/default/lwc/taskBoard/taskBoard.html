@@ -1,0 +1,227 @@
+<template>
+    <div class="board-wrapper">
+        <!-- Header -->
+        <div class="board-header">
+            <div class="header-left">
+                <div class="board-icon">
+                    <lightning-icon icon-name="utility:kanban" size="medium" alternative-text="Task Board"></lightning-icon>
+                </div>
+                <div class="header-text">
+                    <h1 class="board-title">Task Board</h1>
+                    <p class="board-subtitle">Manage your work &amp; personal tasks</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <!-- Category Filter -->
+                <div class="filter-group">
+                    <template for:each={categoryFilters} for:item="filter">
+                        <button
+                            key={filter.value}
+                            class={filter.cssClass}
+                            data-value={filter.value}
+                            onclick={handleCategoryFilter}>
+                            {filter.label}
+                        </button>
+                    </template>
+                </div>
+                <!-- Priority Filter -->
+                <lightning-combobox
+                    name="priorityFilter"
+                    label=""
+                    placeholder="All Priorities"
+                    options={priorityOptions}
+                    value={selectedPriority}
+                    onchange={handlePriorityFilter}
+                    class="priority-filter">
+                </lightning-combobox>
+                <!-- New Task Button -->
+                <button class="btn-new-task" onclick={handleNewTask}>
+                    <lightning-icon icon-name="utility:add" size="x-small" alternative-text="Add Task"></lightning-icon>
+                    <span>New Task</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Board Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-number todo-color">{todoCount}</span>
+                <span class="stat-label">To Do</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-number inprogress-color">{inProgressCount}</span>
+                <span class="stat-label">In Progress</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-number completed-color">{completedCount}</span>
+                <span class="stat-label">Completed</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-number total-color">{totalCount}</span>
+                <span class="stat-label">Total</span>
+            </div>
+        </div>
+
+        <!-- Board Columns -->
+        <div class="board-columns">
+            <!-- ToDo Column -->
+            <div class="column todo-column"
+                data-status="ToDo"
+                ondragover={handleDragOver}
+                ondragleave={handleDragLeave}
+                ondrop={handleDrop}>
+                <div class="column-header">
+                    <div class="column-header-left">
+                        <span class="column-dot todo-dot"></span>
+                        <h2 class="column-title">To Do</h2>
+                        <span class="column-count">{todoCount}</span>
+                    </div>
+                    <button class="btn-add-column" data-status="ToDo" onclick={handleNewTask} title="Add task">
+                        <lightning-icon icon-name="utility:add" size="x-small" alternative-text="Add"></lightning-icon>
+                    </button>
+                </div>
+                <div class="column-body" data-status="ToDo">
+                    <template if:true={isLoading}>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </template>
+                    <template if:false={isLoading}>
+                        <template for:each={todoTasks} for:item="task">
+                            <c-task-card
+                                key={task.Id}
+                                task={task}
+                                data-id={task.Id}
+                                draggable="true"
+                                ondragstart={handleDragStart}
+                                ondragend={handleDragEnd}
+                                onedit={handleEditTask}
+                                ondelete={handleDeleteTask}
+                                onstatuschange={handleStatusChange}>
+                            </c-task-card>
+                        </template>
+                        <template if:true={isTodoEmpty}>
+                            <div class="empty-column">
+                                <lightning-icon icon-name="utility:check" size="medium" alternative-text="Empty"></lightning-icon>
+                                <p>No tasks here</p>
+                                <span>Drop tasks here or create a new one</span>
+                            </div>
+                        </template>
+                    </template>
+                </div>
+            </div>
+
+            <!-- In Progress Column -->
+            <div class="column inprogress-column"
+                data-status="InProgress"
+                ondragover={handleDragOver}
+                ondragleave={handleDragLeave}
+                ondrop={handleDrop}>
+                <div class="column-header">
+                    <div class="column-header-left">
+                        <span class="column-dot inprogress-dot"></span>
+                        <h2 class="column-title">In Progress</h2>
+                        <span class="column-count">{inProgressCount}</span>
+                    </div>
+                    <button class="btn-add-column" data-status="InProgress" onclick={handleNewTask} title="Add task">
+                        <lightning-icon icon-name="utility:add" size="x-small" alternative-text="Add"></lightning-icon>
+                    </button>
+                </div>
+                <div class="column-body" data-status="InProgress">
+                    <template if:true={isLoading}>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </template>
+                    <template if:false={isLoading}>
+                        <template for:each={inProgressTasks} for:item="task">
+                            <c-task-card
+                                key={task.Id}
+                                task={task}
+                                data-id={task.Id}
+                                draggable="true"
+                                ondragstart={handleDragStart}
+                                ondragend={handleDragEnd}
+                                onedit={handleEditTask}
+                                ondelete={handleDeleteTask}
+                                onstatuschange={handleStatusChange}>
+                            </c-task-card>
+                        </template>
+                        <template if:true={isInProgressEmpty}>
+                            <div class="empty-column">
+                                <lightning-icon icon-name="utility:clock" size="medium" alternative-text="Empty"></lightning-icon>
+                                <p>Nothing in progress</p>
+                                <span>Drag tasks here to start working</span>
+                            </div>
+                        </template>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Completed Column -->
+            <div class="column completed-column"
+                data-status="Completed"
+                ondragover={handleDragOver}
+                ondragleave={handleDragLeave}
+                ondrop={handleDrop}>
+                <div class="column-header">
+                    <div class="column-header-left">
+                        <span class="column-dot completed-dot"></span>
+                        <h2 class="column-title">Completed</h2>
+                        <span class="column-count">{completedCount}</span>
+                    </div>
+                    <button class="btn-add-column" data-status="Completed" onclick={handleNewTask} title="Add task">
+                        <lightning-icon icon-name="utility:add" size="x-small" alternative-text="Add"></lightning-icon>
+                    </button>
+                </div>
+                <div class="column-body" data-status="Completed">
+                    <template if:true={isLoading}>
+                        <div class="skeleton-card"></div>
+                    </template>
+                    <template if:false={isLoading}>
+                        <template for:each={completedTasks} for:item="task">
+                            <c-task-card
+                                key={task.Id}
+                                task={task}
+                                data-id={task.Id}
+                                draggable="true"
+                                ondragstart={handleDragStart}
+                                ondragend={handleDragEnd}
+                                onedit={handleEditTask}
+                                ondelete={handleDeleteTask}
+                                onstatuschange={handleStatusChange}>
+                            </c-task-card>
+                        </template>
+                        <template if:true={isCompletedEmpty}>
+                            <div class="empty-column">
+                                <lightning-icon icon-name="utility:priority" size="medium" alternative-text="Empty"></lightning-icon>
+                                <p>Nothing completed yet</p>
+                                <span>Drag tasks here when done</span>
+                            </div>
+                        </template>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Modal -->
+        <template if:true={isModalOpen}>
+            <c-task-modal
+                task={selectedTask}
+                default-status={defaultStatus}
+                onclose={handleModalClose}
+                onsave={handleModalSave}>
+            </c-task-modal>
+        </template>
+
+        <!-- Toast Notification -->
+        <template if:true={showToast}>
+            <div class={toastClass}>
+                <lightning-icon icon-name={toastIcon} size="x-small" alternative-text="notification"></lightning-icon>
+                <span>{toastMessage}</span>
+            </div>
+        </template>
+    </div>
+</template>

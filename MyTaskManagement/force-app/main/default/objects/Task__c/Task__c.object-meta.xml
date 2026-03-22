@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Task Board Item</label>
+    <pluralLabel>Task Board Items</pluralLabel>
+    <nameField>
+        <label>Task Title</label>
+        <type>Text</type>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <description>Custom object for Task Management Board - stores tasks for ToDo, InProgress, and Completed columns</description>
+</CustomObject>

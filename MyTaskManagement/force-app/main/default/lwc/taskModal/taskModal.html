@@ -1,0 +1,174 @@
+<template>
+    <!-- Modal Backdrop -->
+    <div class="modal-backdrop" onclick={handleBackdropClick}>
+        <!-- Modal Container -->
+        <div class="modal-container" onclick={stopPropagation}>
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class={headerIconClass}>
+                        <lightning-icon icon-name="utility:kanban" size="small" alternative-text="Task"></lightning-icon>
+                    </div>
+                    <div>
+                        <h2 class="modal-title">{modalTitle}</h2>
+                        <p class="modal-subtitle">{modalSubtitle}</p>
+                    </div>
+                </div>
+                <button class="btn-close" onclick={handleClose} title="Close">
+                    <lightning-icon icon-name="utility:close" size="small" alternative-text="Close"></lightning-icon>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="form-grid">
+
+                    <!-- Title (Full Width) -->
+                    <div class="form-field form-field--full">
+                        <label class="field-label required">Task Title</label>
+                        <input
+                            type="text"
+                            class={titleInputClass}
+                            value={formData.title}
+                            placeholder="Enter task title..."
+                            data-field="title"
+                            onchange={handleFieldChange}
+                            maxlength="255" />
+                        <template if:true={titleError}>
+                            <span class="field-error">{titleError}</span>
+                        </template>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="form-field">
+                        <label class="field-label required">Status</label>
+                        <div class="status-selector">
+                            <template for:each={statusOptions} for:item="opt">
+                                <button
+                                    key={opt.value}
+                                    class={opt.cssClass}
+                                    data-value={opt.value}
+                                    onclick={handleStatusSelect}>
+                                    <span class={opt.dotClass}></span>
+                                    {opt.label}
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Priority -->
+                    <div class="form-field">
+                        <label class="field-label">Priority</label>
+                        <div class="priority-selector">
+                            <template for:each={priorityOptions} for:item="opt">
+                                <button
+                                    key={opt.value}
+                                    class={opt.cssClass}
+                                    data-value={opt.value}
+                                    onclick={handlePrioritySelect}>
+                                    {opt.label}
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="form-field">
+                        <label class="field-label">Category</label>
+                        <div class="toggle-group">
+                            <button class={workCategoryClass} data-value="Work" onclick={handleCategorySelect}>
+                                💼 Work
+                            </button>
+                            <button class={personalCategoryClass} data-value="Personal" onclick={handleCategorySelect}>
+                                🏠 Personal
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Due Date -->
+                    <div class="form-field">
+                        <label class="field-label">Due Date</label>
+                        <input
+                            type="date"
+                            class="form-input"
+                            value={formData.dueDate}
+                            data-field="dueDate"
+                            onchange={handleFieldChange} />
+                    </div>
+
+                    <!-- Assigned To -->
+                    <div class="form-field">
+                        <label class="field-label">Assigned To</label>
+                        <input
+                            type="text"
+                            class="form-input"
+                            value={formData.assignedTo}
+                            placeholder="Enter name..."
+                            data-field="assignedTo"
+                            onchange={handleFieldChange}
+                            maxlength="255" />
+                    </div>
+
+                    <!-- Tags (Full Width) -->
+                    <div class="form-field form-field--full">
+                        <label class="field-label">Tags <span class="field-hint">(comma-separated)</span></label>
+                        <input
+                            type="text"
+                            class="form-input"
+                            value={formData.tags}
+                            placeholder="e.g. frontend, urgent, review"
+                            data-field="tags"
+                            onchange={handleFieldChange}
+                            maxlength="255" />
+                        <template if:true={hasTags}>
+                            <div class="tag-preview">
+                                <template for:each={tagPreviewList} for:item="tag">
+                                    <span key={tag} class="tag-chip">{tag}</span>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Description (Full Width) -->
+                    <div class="form-field form-field--full">
+                        <label class="field-label">Description</label>
+                        <textarea
+                            class="form-textarea"
+                            value={formData.description}
+                            placeholder="Add a detailed description..."
+                            data-field="description"
+                            onchange={handleFieldChange}
+                            rows="4"
+                            maxlength="32768">
+                        </textarea>
+                        <span class="char-count">{descriptionLength} / 32768</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="footer-left">
+                    <template if:true={isEdit}>
+                        <span class="last-modified">Last modified: {formattedLastModified}</span>
+                    </template>
+                </div>
+                <div class="footer-right">
+                    <button class="btn-cancel" onclick={handleClose}>Cancel</button>
+                    <button class="btn-save" onclick={handleSave} disabled={isSaving}>
+                        <template if:true={isSaving}>
+                            <div class="spinner"></div>
+                            Saving...
+                        </template>
+                        <template if:false={isSaving}>
+                            <lightning-icon icon-name="utility:save" size="xx-small" alternative-text="Save"></lightning-icon>
+                            {saveLabel}
+                        </template>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
