@@ -1,0 +1,22 @@
+<template>
+    <lightning-card title="HelloWorld" icon-name="custom:custom14">
+      <div class="slds-m-around_medium">
+        <p style="color:blue">Hello, {greeting}!</p>
+        <lightning-input label="Name"  onchange={changeHandler}></lightning-input>
+      </div>
+            <lightning-combobox
+            name="status"
+            label="Status"
+            placeholder="Choose Status"
+            value={svalue}
+            onchange={handleChange}
+            options={statusOptions}>
+    </lightning-combobox>
+    <template if:true={show}>
+      <p> Done </p>
+    </template>
+    <template if:false={show}>
+      <p>Not Done </p>
+    </template>
+    </lightning-card>
+  </template>

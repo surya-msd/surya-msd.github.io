@@ -1,0 +1,14 @@
+.THIS {
+    background-color : black;
+    padding : 10px;
+}   
+
+.THIS .red{
+    background-color : red;
+    padding : 10px;
+}
+
+.THIS .blue{
+    background-color : blue;
+    padding : 10px;
+}

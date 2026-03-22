@@ -1,0 +1,19 @@
+<template>
+    <div>
+        <div>Name: {name}</div>
+        <div>Description: {description}</div>
+        <lightning-badge label={material}></lightning-badge>
+        <lightning-badge label={category}></lightning-badge>
+        <div>Price: {price}</div>
+        <div><img src={pictureUrl}/></div>
+
+        <lightning-combobox
+            name="status"
+            label="Status"
+            placeholder="Choose Status"
+            value={value}
+            onchange={handleChange}
+            options={statusOptions}>
+    </lightning-combobox>
+    </div>
+</template>

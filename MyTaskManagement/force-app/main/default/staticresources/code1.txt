@@ -1,0 +1,845 @@
+/*
+* Class Name   :  gsfpClsOLISQuarterlyMonthly
+* Description  :  Server Side Controller for "gsfplwcAccountViewPDQuarterly, gsfplwcAccountViewPDMonthly" Lightning web component
+* Created by   :  Cognizant -IT Team
+* Created Date :  March, 2023
+* Test Class   :  gsfpClsOLISQuarterlyMonthly_Test 
+* Note : 
+*/
+public without sharing class gsfpClsOLISQuarterlyMonthly {
+    //KK - Begins
+    private static Map<String,String> olisRTMMap;
+    private static Map<String,String> olisFarmMap;
+    private static Map<String,List<String>> inputValuesMap;
+    private static List<gsfpClsSalesplanWrapper.OLISParentWrapper> generatedOLILst;
+    private static String cyVolume; 
+    private static String cyValue;
+    private static String cyVolumeManual;
+    private static String cySellOutValueTotal; 
+    private static String cySellOutVolumeTotal; 
+    private static String cyValueManual;   
+    private static String cyFSFVolume; 
+    private static String cyFSFValue;
+    private static String cyISFVolume; 
+    private static String cyISFValue;
+    private static String pyVolume; 
+    private static String pyValue;
+    private static String py2Volume; 
+    private static String py2Value;
+    private static String py3Volume; 
+    private static String py3Value;
+    private static String fyVolume; 
+    private static String fyValue;
+    private static String fyFSFVolume; 
+    private static String fyFSFValue;
+    private static String cy;
+    private static String py;
+    private static String fy;
+    private static String OLISKey;
+    private static Boolean isAPMet;
+    private static Boolean isISFMet;
+    private static Boolean isCy1APMet;
+    private static Boolean isCy1FSFMet;
+    private static Map<String,Season__c> currSeasonMap;
+    private static Map<String,Season__c> futSeasonMap;
+    private static String errorMessage;
+    private static Map<String,AggregateResult> pySalesMap;
+    private static Map<String,AggregateResult> cySalesMap;
+    private static Map<String,AggregateResult> pyManualSalesMap;    
+    private static Map<String,GSP_ISF_Due_Dates__c> dueDateMap;
+    private static final String TREATMENT = GSP_Constants.TREATMENT;
+    private static final String BRAND = GSP_Constants.BRAND;
+    private static final String PRODUCT = GSP_Constants.PRODUCT;
+    private static final String MATERIAL_DESC = GSP_Constants.MATERIAL_DESC;   
+    // private static Map<String,String> monthsNumMap = new Map<String,String>{ 'January' => '1', 'February' => '2', 'March' => '3', 'April' => '4', 'May' => '5', 'June' => '6', 'July' => '7', 'August' => '8', 'September' => '9', 'October' => '10', 'November' => '11', 'December' => '12' };
+    
+    /*
+* Method Name : generateOLISMap
+* Description : creating OLIS Map
+* Params      : 
+*/
+    public static void generateOLISMap(Integer currentYear) {
+        olisRTMMap = new Map<String, String>();
+        olisRTMMap.put('Sell_In_Sales_Plan','Sell In Sales Plan');
+        olisRTMMap.put('Sell_In_Actuals','Sell In Actuals');
+        olisRTMMap.put('Sell_In_Forecast','Sell In Forecast');
+        olisRTMMap.put('Sell_In_Upsides','Sell In Upsides/Above Allocation');
+        olisRTMMap.put('Returns_Forecast','Returns Forecast');
+        olisRTMMap.put('Inventory_Forecast','Inventory Forecast');
+        olisRTMMap.put('Returns_Actuals','Returns Actuals');
+        olisRTMMap.put('Inventory_Actuals','Inventory Actuals');
+        olisRTMMap.put('Sell_Out_Sales_Plan','Sell Out Sales Plan');
+        olisRTMMap.put('Sell_Out_Actuals','Sell Out Actuals');     
+        olisRTMMap.put('Sell_Out_Forecast','Sell Out Forecast');
+        
+        olisFarmMap = new Map<String, String>();
+        olisFarmMap.put('Sell_Out_Sales_Plan','Sell Out Sales Plan');
+        olisFarmMap.put('Sell_Out_Actuals','Sell Out Actuals');        
+        olisFarmMap.put('Sell_Out_Forecast','Sell Out Forecast');
+        olisFarmMap.put('Sell_Out_Upsides','Sell Out Upsides/ Above Allocation');
+        olisFarmMap.put('Returns_Forecast','Returns Forecast');
+        //olisFarmMap.put('Inventory_Forecast','Inventory Forecast');
+        olisFarmMap.put('Returns_Actuals','Returns Actuals');
+        olisFarmMap.put('Inventory_Actuals','Inventory Actuals');
+        olisFarmMap.put('POG','POG');
+        
+        inputValuesMap = new Map<String, List<String>>(); 
+        cy = String.valueOf(currentYear);
+        fy = String.valueOf(currentYear + 1);
+        cySellOutVolumeTotal = cy + ' (Volume) Total';
+        cyVolume = cy + ' (Volume)';
+        cyVolumeManual = cy + ' (Volume) Manual';
+        cySellOutValueTotal = cy + ' (Value) Total';
+        cyValueManual = cy + ' (Value) Manual';
+        cyFSFVolume = cy + ' FSF (Volume)';
+        cyFSFValue = cy + ' FSF (Value)';
+        cyISFVolume = cy + ' ISF (Volume)';
+        cyISFValue = cy + ' ISF (Value)';
+        cyValue = cy + ' (Value)';
+        py = String.valueOf(currentYear - 1);
+        pyVolume = String.valueOf(currentYear - 1) + ' (Volume)';
+        pyValue = String.valueOf(currentYear - 1) + ' (Value)';
+        py2Volume = String.valueOf(currentYear - 2) + ' (Volume)';
+        py2Value = String.valueOf(currentYear - 2) + ' (Value)';
+        py3Volume = String.valueOf(currentYear - 3) + ' (Volume)';
+        py3Value = String.valueOf(currentYear - 3) + ' (Value)';
+        fyVolume = String.valueOf(currentYear + 1) + ' (Volume)';
+        fyValue = String.valueOf(currentYear + 1) + ' (Value)';
+        fyFSFVolume = String.valueOf(currentYear + 1) + ' FSF (Volume)';
+        fyFSFValue = String.valueOf(currentYear + 1) + ' FSF (Value)';
+        
+        inputValuesMap.put('Sell_In_Sales_Plan', new List<String>{cyVolume, cyValue,fyVolume,fyValue});
+        inputValuesMap.put('Sell_In_Actuals', new List<String>{py3Volume,py3Value,py2Volume,py2Value,pyVolume,pyValue,cyVolume, cyValue});
+        inputValuesMap.put('Sell_In_Forecast', new List<String>{cyFSFVolume,cyFSFValue,cyISFVolume, cyISFValue, fyFSFVolume, fyFSFValue});
+        inputValuesMap.put('Sell_In_Upsides', new List<String>{cy});
+        inputValuesMap.put('Returns_Forecast', new List<String>{cy});
+        inputValuesMap.put('Returns_Actuals', new List<String>{cy});
+        inputValuesMap.put('Inventory_Forecast', new List<String>{cy});
+        inputValuesMap.put('Inventory_Actuals', new List<String>{cy});
+        inputValuesMap.put('Sell_Out_Sales_Plan', new List<String>{cyVolume, cyValue,fyVolume,fyValue});
+        inputValuesMap.put('Sell_Out_Actuals', new List<String>{py3Volume,py3Value,py2Volume,py2Value,pyVolume,pyValue,cySellOutVolumeTotal,cySellOutValueTotal,cyVolume,cyValue,cyVolumeManual,cyValueManual}); 
+        inputValuesMap.put('Sell_Out_Forecast', new List<String>{cyFSFVolume,cyFSFValue,cyISFVolume, cyISFValue, fyFSFVolume, fyFSFValue});
+        inputValuesMap.put('Sell_Out_Upsides', new List<String>{cy});
+        inputValuesMap.put('POG', new List<String>{cyVolume, cyValue});
+        
+    }
+    
+    /*
+* Method Name : seasonOpenCheck
+* Description : Method to check seasons
+* Params      : currSeason,futSeason,granularity,screen.
+*/
+    public static void seasonOpenCheck(Season__c currSeason, Season__c futSeason, String granularity, String screen){
+        system.debug('currSeason=='+currSeason);
+        system.debug('futSeason=='+futSeason);
+        isAPMet = (System.today() >= currSeason.AP_Process_Open_Date_Submitted__c && System.today() <= currSeason.AP_Process_Close_Date_Submitted__c) && (currSeason.AP_Product_Granularity_Submitted__c == granularity) ? true : false;
+        isISFMet = (System.today() >= currSeason.ISF_Process_Open_Date_Submitted__c && System.today() <= currSeason.ISF_Process_Close_Date_Submitted__c) && currSeason.ISF_Product_Granularity_Submitted__c == granularity ? true : false;
+        isCy1APMet = (System.today() >= futSeason.AP_Process_Open_Date_Submitted__c && System.today() <= futSeason.AP_Process_Close_Date_Submitted__c) && futSeason.AP_Product_Granularity_Submitted__c == granularity ? true : false;
+        
+        if(screen == 'Quarterly'){
+            isCy1FSFMet = (System.today() >= futSeason.FSF_Process_Open_Date_Submitted__c && System.today() <= futSeason.FSF_Process_Close_Date_Submitted__c) && futSeason.FSF_Product_Granularity_Submitted__c == granularity  && futSeason.FSF_Quaterly_Submitted__c == true ? true : false;
+            system.debug('isCy1FSFMet=='+isCy1FSFMet);
+            system.debug('isCy1APMet=='+isCy1APMet);
+        } else {
+            isCy1FSFMet = (System.today() >= futSeason.FSF_Process_Open_Date_Submitted__c && System.today() <= futSeason.FSF_Process_Close_Date_Submitted__c) && futSeason.FSF_Product_Granularity_Submitted__c == granularity && futSeason.FSF_Quaterly_Submitted__c == false ? true : false;
+        }
+        
+    }
+    
+    /*
+* Method Name : seasonOpenCheck
+* Description : creating Season Map
+* Params      : currSeason,futSeason.
+*/
+    public static void generateSeasonMap(List<Season__c> currSeasons,List<Season__c> futSeasons){
+        currSeasonMap = new Map<String,Season__c>();
+        futSeasonMap = new Map<String,Season__c>();
+        for(Season__c seas:currSeasons) {
+            currSeasonMap.put(seas.Product_Group__c,seas);        	
+        }
+        for(Season__c seas:futSeasons) {
+            futSeasonMap.put(seas.Product_Group__c,seas);
+        }
+    }
+    
+    /*
+* Method Name : generateOLISForAccount
+* Description : creating OLIS for Account
+* Params      : accountId,territoryId,currSeasons,futSeasons,granularity,screen.
+*/
+    @AuraEnabled(cacheable=true)
+    public static List<gsfpClsSalesplanWrapper.OLISParentWrapper> generateOLISForAccount(String accountId, String territoryId, List<Season__c> currSeasons,List<Season__c> futSeasons, String granularity, String screen) {
+        List<OpportunityLineItem> oliLst = new List<OpportunityLineItem>();
+        Map<String,OpportunityLineItemSchedule> fsfOlisMap = new Map<String,OpportunityLineItemSchedule>();
+        generatedOLILst = new List<gsfpClsSalesplanWrapper.OLISParentWrapper>();
+        Set<String> psp2pIds = new Set<String>();
+        generateSeasonMap(currSeasons,futSeasons);        	
+        String fieldName = screen == 'Quarterly' ? 'Quarter_Name__c' : 'fCalendarMonth__c';
+        String query = 'SELECT Product2.Line_of_Business__c,Id,POG_Actuals_Qty__c,Products_Services_Portfolio_To_Product__c,Selected_UOM__c,Product2.Alt_UoM1__c,Product2.Alt_UoM1_CF__c,Product2.Alt_UoM2__c,Product2.Alt_UoM2_CF__c,Product2.Alt_UoM3__c,Product2.Alt_UoM3_CF__c,Actual_Sell_Out_Qty__c,Actual_Sell_Out_Amt__c,Inventory_Qty__c,Actual_Inventory_Qty__c,Opportunity.Territory2Id,Returns_Forecast__c,Products_Services_Portfolio_To_Product__r.Products_and_Services_Portfolio_SFID__r.Product_Group__c,Opportunity.Sales_Manager_Approval_Status__c,Product2.Family,Forecast_Qty__c,Upsides_Above_Allocation_Sell_In__c,Upsides_Above_Allocation_Sell_Out__c,Opportunity.Product_Group__c,Sell_Out_Qty__c,PSPTP_NetPrice__c,OpportunityId, Opportunity.AccountId, Opportunity.Account.Name,  Opportunity.Account.Classification_Group_Descr__c,Opportunity.Account.Account_Classification_Descr__c,Opportunity.Account.Account_Group__c,Opportunity.Account.CRM_Account_RADL_New__c, Opportunity.Season_SFID__r.Year__c, ISF_Sell_In_Qty__c, ISF_Sell_Out_Qty__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Planned_Sell_In_Amount__c, Planned_Sell_Out_Amount__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c, FSF_Sell_In_Qty__c, FSF_Sell_Out_Qty__c, Product2Id, Product2.Name, Type__c, Product2.QuantityUnitOfMeasure,(SELECT Id,POG_Actuals_Qty__c,Actual_Sell_Out_Qty__c,Actual_Sell_Out_Amt__c,Actual_Inventory_Qty__c,Inventory_Qty__c, Sell_Out_Qty__c,Line_Type__c,Calendar_Month__c, Year__c, Quarter__c, Quarter_Name__c, OpportunityLineItemId, Month__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Planned_Sell_In_Amount__c, Planned_Sell_Out_Amount__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c, FSF_Sell_In_Quantity__c, FSF_SellOut__c, Upsides_Above_Allocation_Sell_In__c, Upsides_Above_Allocation_Sell_Out__c, Forecast_Qty__c, Returns_Forecast__c, fMonth_Name__c from OpportunityLineItemSchedules WHERE Line_Type__c=:screen ORDER BY Year__c,'+fieldName+') FROM OpportunityLineItem WHERE Opportunity.Season_SFID__c IN: currSeasons  AND Opportunity.AccountId =: accountId AND Type__c =: granularity and Opportunity.Territory2Id =: territoryId';
+        
+        try {
+            for (OpportunityLineItem oli : Database.query(query)/*[SELECT Id,Returns_Forecast__c,Forecast_Qty__c,Upsides_Above_Allocation_Sell_In__c,Upsides_Above_Allocation_Sell_Out__c,Opportunity.Product_Group__c,Sell_Out_Qty__c,PSPTP_NetPrice__c,OpportunityId, Opportunity.AccountId, Opportunity.Account.Name, Opportunity.Account.Classification_Group_Descr__c, Opportunity.Season_SFID__r.Year__c, ISF_Sell_In_Qty__c, ISF_Sell_Out_Qty__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Planned_Sell_In_Amount__c, Planned_Sell_Out_Amount__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c, FSF_Sell_In_Qty__c, FSF_Sell_Out_Qty__c, Product2Id, Product2.Name, Type__c, Product2.QuantityUnitOfMeasure,
+(SELECT Id, Sell_Out_Qty__c,Line_Type__c,Calendar_Month__c, Year__c, Quarter__c, Quarter_Name__c, OpportunityLineItemId, Month__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Planned_Sell_In_Amount__c, Planned_Sell_Out_Amount__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c, FSF_Sell_In_Quantity__c, FSF_SellOut__c, Upsides_Above_Allocation_Sell_In__c, Upsides_Above_Allocation_Sell_Out__c, Forecast_Qty__c, Returns_Forecast__c, fMonth_Name__c from OpportunityLineItemSchedules WHERE Line_Type__c=:screen ORDER BY Calendar_Month__c,Year__c) 
+FROM OpportunityLineItem WHERE Opportunity.Season_SFID__c IN: currSeasons  AND Opportunity.AccountId =: accountId AND Type__c =: granularity and Opportunity.Territory2Id =: territoryId]*/)
+            {
+                if((granularity == TREATMENT && (oli.Product2.Line_of_Business__c.equalsIgnoreCase(GSP_Constants.strRowCrops) || oli.Product2.Line_of_Business__c.equalsIgnoreCase(GSP_Constants.VEG))) || granularity != TREATMENT){
+                    oliLst.add(oli);
+                }
+                psp2pIds.add(oli.Products_Services_Portfolio_To_Product__c);
+            }
+            
+            for (OpportunityLineItemSchedule olis : [SELECT Id,OpportunityLineItem.Products_Services_Portfolio_To_Product__c,Is_FSF_Freezed__c,OpportunityLineItem.Opportunity.FSF_Approval_Status__c,OpportunityLineItem.Opportunity.Sales_Manager_Approval_Status__c,OpportunityLineItem.Product2.Family,OpportunityLineItem.PSPTP_NetPrice__c,OpportunityLineItem.Forecast_Qty__c, Line_Type__c,Sell_Out_Qty__c,Calendar_Month__c,OpportunityLineItem.Opportunity.AccountId,OpportunityLineItem.Product2Id, Year__c, Quarter__c, Quarter_Name__c, OpportunityLineItemId,  Planned_Sell_In_Amount__c,Planned_Sell_Out_Amount__c, Month__c, Planned_Sell_In_Qty__c,
+                                                     OpportunityLineItem.Planned_Sell_Out_Qty__c,OpportunityLineItem.Planned_Sell_Out_Amount__c, Planned_Sell_Out_Qty__c, Upsides_Above_Allocation_Sell_In__c, Upsides_Above_Allocation_Sell_Out__c, Forecast_Qty__c, Returns_Forecast__c, fMonth_Name__c, FSF_Sell_In_Quantity__c, FSF_SellOut__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c, OpportunityLineItem.FSF_Sell_In_Amount__c, OpportunityLineItem.FSF_Sell_In_Qty__c, OpportunityLineItem.FSF_Sell_Out_Amount__c, OpportunityLineItem.FSF_Sell_Out_Qty__c 
+                                                     ,OpportunityLineItem.Planned_Sell_In_Qty__c,OpportunityLineItem.Planned_Sell_In_Amount__c
+                                                     from OpportunityLineItemSchedule
+                                                     WHERE Line_Type__c=:screen AND OpportunityLineItem.Opportunity.Season_SFID__c IN: futSeasons  AND OpportunityLineItem.Opportunity.AccountId =: accountId AND OpportunityLineItem.Type__c =: granularity and OpportunityLineItem.Opportunity.Territory2Id =: territoryId])
+            {
+                OLISKey = olis.OpportunityLineItem.Opportunity.AccountId+'_'+olis.OpportunityLineItem.Product2Id;
+                if(screen == 'Quarterly'){
+                    OLISKey = OLISKey+'_'+olis.Quarter_Name__c;
+                } else {
+                    OLISKey = OLISKey+'_'+olis.Month__c;
+                }
+                fsfOlisMap.put(OLISKey,olis);
+                psp2pIds.add(olis.OpportunityLineItem.Products_Services_Portfolio_To_Product__c);
+            }
+            String terrName = [Select DeveloperName from Territory2 where Id=: territoryId limit 1].DeveloperName;
+            terrName = terrName.subStringAfter('_').toUpperCase();
+            getProductSales(terrName,currSeasons[0],'Account',screen,accountId,granularity);
+            getProductSalesManual(terrName,currSeasons[0],'Account',screen,accountId,granularity,null);
+            getProductSalesCurrentYear(terrName,currSeasons[0],'Account',screen,accountId,granularity);            
+            generatedOLILst = generateOLISWrapper(oliLst,fsfOlisMap,currSeasonMap,futSeasonMap,granularity,screen,gsfpClsAccProdDistributionUtility.generateSalesTarget(psp2pIds));
+            return generatedOLILst;  
+        }  catch(Exception ex) { 
+            errorMessage='Error in gsfpClsOLISQuarterlyMonthly.generateOLISForAccount=='+ ex.getMessage()+'==ON Line== '+ex.getLineNumber();
+            system.debug(LoggingLevel.DEBUG,errorMessage);
+            throw new AurahandledException(errorMessage);
+        } 
+        
+        
+    }
+    
+    /*
+* Method Name : generateOLISForProduct
+* Description : creating OLIS for Product
+* Params      : psp2pISF,psp2pFSF,territoryId,currSeasons,futSeasons,granularity,screen.
+*/
+    @AuraEnabled(cacheable=true)
+    public static List<gsfpClsSalesplanWrapper.OLISParentWrapper> generateOLISForProduct(Products_Services_Portfolio_To_Product__c psp2pISF,Products_Services_Portfolio_To_Product__c psp2pFSF, String territoryId, List<Season__c> currSeasons,List<Season__c> futSeasons, String granularity, String screen) {
+        List<OpportunityLineItem> oliLst = new List<OpportunityLineItem>();
+        Map<String,OpportunityLineItemSchedule> fsfOlisMap = new Map<String,OpportunityLineItemSchedule>();
+        generatedOLILst = new List<gsfpClsSalesplanWrapper.OLISParentWrapper>();
+        generateSeasonMap(currSeasons,futSeasons);
+        String pspId = psp2pISF.Products_and_Services_Portfolio_SFID__c;
+        String prodId = psp2pISF.Product_SFID__c;
+        String fieldName = screen == 'Quarterly' ? 'Quarter_Name__c' : 'fCalendarMonth__c';
+        String query = 'SELECT Id,POG_Actuals_Qty__c,Selected_UOM__c,Product2.Alt_UoM1__c,Product2.Alt_UoM1_CF__c,Product2.Alt_UoM2__c,Product2.Alt_UoM2_CF__c,Product2.Alt_UoM3__c,Product2.Alt_UoM3_CF__c,Actual_Sell_Out_Qty__c,Actual_Sell_Out_Amt__c,Inventory_Qty__c,Actual_Inventory_Qty__c,Opportunity.Territory2Id,Returns_Forecast__c,Products_Services_Portfolio_To_Product__r.Products_and_Services_Portfolio_SFID__r.Product_Group__c,Product2.Family,Opportunity.Sales_Manager_Approval_Status__c,Upsides_Above_Allocation_Sell_In__c,Upsides_Above_Allocation_Sell_Out__c,Opportunity.Product_Group__c,PSPTP_NetPrice__c,Sell_Out_Qty__c,Forecast_Qty__c,OpportunityId, Opportunity.AccountId,Opportunity.Account.Name, Opportunity.Account.Classification_Group_Descr__c,Opportunity.Account.Account_Classification_Descr__c,Opportunity.Account.Account_Group__c,Opportunity.Account.CRM_Account_RADL_New__c, Opportunity.Season_SFID__r.Year__c, ISF_Sell_In_Qty__c, ISF_Sell_Out_Qty__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Planned_Sell_In_Amount__c, Planned_Sell_Out_Amount__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c, FSF_Sell_In_Qty__c, FSF_Sell_Out_Qty__c, Product2Id, Product2.Name, Type__c, Product2.QuantityUnitOfMeasure,(SELECT Id,POG_Actuals_Qty__c,Actual_Sell_Out_Amt__c,Actual_Sell_Out_Qty__c,Actual_Inventory_Qty__c,Inventory_Qty__c, Line_Type__c,Calendar_Month__c, Year__c, Quarter__c, Quarter_Name__c, Sell_Out_Qty__c, OpportunityLineItemId, Month__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Upsides_Above_Allocation_Sell_In__c, Upsides_Above_Allocation_Sell_Out__c, Forecast_Qty__c, Planned_Sell_In_Amount__c, Planned_Sell_Out_Amount__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c,FSF_Sell_In_Quantity__c, FSF_SellOut__c, Returns_Forecast__c, fMonth_Name__c from OpportunityLineItemSchedules WHERE Line_Type__c=:screen ORDER BY Year__c,'+fieldName+') FROM OpportunityLineItem where Opportunity.Products_and_Services_Portfolio_SFID__c =: pspId and Product2Id=:prodId';
+        string seasonGranularity=currSeasonMap.containsKey(psp2pISF.Products_and_Services_Portfolio_SFID__r.Product_Group__c) ? currSeasonMap.get(psp2pISF.Products_and_Services_Portfolio_SFID__r.Product_Group__c).ISF_Product_Granularity_Submitted__c!=null ? currSeasonMap.get(psp2pISF.Products_and_Services_Portfolio_SFID__r.Product_Group__c).ISF_Product_Granularity_Submitted__c : null : null;
+        try {
+            for (OpportunityLineItem oli : Database.query(query)/*[SELECT Id,Returns_Forecast__c,Upsides_Above_Allocation_Sell_In__c,Upsides_Above_Allocation_Sell_Out__c,Opportunity.Product_Group__c,PSPTP_NetPrice__c,Sell_Out_Qty__c,Forecast_Qty__c,OpportunityId, Opportunity.AccountId,Opportunity.Account.Name, Opportunity.Account.Classification_Group_Descr__c, Opportunity.Season_SFID__r.Year__c, ISF_Sell_In_Amount__c, ISF_Sell_Out_Amount__c, ISF_Sell_In_Qty__c, ISF_Sell_Out_Qty__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Planned_Sell_In_Amount__c, Planned_Sell_Out_Amount__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c, FSF_Sell_In_Qty__c, FSF_Sell_Out_Qty__c, Product2Id, Product2.Name, Type__c, Product2.QuantityUnitOfMeasure,
+(SELECT Id, Line_Type__c,Calendar_Month__c, Year__c, Quarter__c, Quarter_Name__c, Sell_Out_Qty__c, OpportunityLineItemId, Month__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Upsides_Above_Allocation_Sell_In__c, Upsides_Above_Allocation_Sell_Out__c, Forecast_Qty__c, Planned_Sell_In_Amount__c, Planned_Sell_Out_Amount__c, ISF_Sell_In_Amount__c, ISF_Sell_Out_Amount__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c,FSF_Sell_In_Quantity__c, FSF_SellOut__c, Returns_Forecast__c, fMonth_Name__c from OpportunityLineItemSchedules WHERE Line_Type__c=:screen ORDER BY Calendar_Month__c,Year__c) 
+FROM OpportunityLineItem where Opportunity.Products_and_Services_Portfolio_SFID__c =: psp2pISF.Products_and_Services_Portfolio_SFID__c and Product2Id=:psp2pISF.Product_SFID__c]*/)
+            {
+                oliLst.add(oli);
+            }
+            
+            for (OpportunityLineItemSchedule olis : [SELECT Id,Is_FSF_Freezed__c,OpportunityLineItem.Opportunity.FSF_Approval_Status__c,OpportunityLineItem.Opportunity.Sales_Manager_Approval_Status__c,OpportunityLineItem.Product2.Family, Line_Type__c,OpportunityLineItem.PSPTP_NetPrice__c,Calendar_Month__c,OpportunityLineItem.Opportunity.AccountId,OpportunityLineItem.Product2Id, Year__c, Quarter__c, Quarter_Name__c, OpportunityLineItemId, Month__c, Planned_Sell_In_Qty__c, Planned_Sell_Out_Qty__c, Planned_Sell_In_Amount__c,Planned_Sell_Out_Amount__c,Sell_Out_Qty__c,Upsides_Above_Allocation_Sell_In__c, Upsides_Above_Allocation_Sell_Out__c, Forecast_Qty__c, Returns_Forecast__c, fMonth_Name__c, FSF_Sell_In_Quantity__c, FSF_SellOut__c, FSF_Sell_In_Amount__c, FSF_Sell_Out_Amount__c, OpportunityLineItem.FSF_Sell_In_Amount__c, 
+                                                     OpportunityLineItem.FSF_Sell_In_Qty__c, OpportunityLineItem.FSF_Sell_Out_Amount__c, OpportunityLineItem.FSF_Sell_Out_Qty__c,OpportunityLineItem.Planned_Sell_In_Qty__c,OpportunityLineItem.Planned_Sell_In_Amount__c,OpportunityLineItem.Planned_Sell_Out_Qty__c,OpportunityLineItem.Planned_Sell_Out_Amount__c from OpportunityLineItemSchedule
+                                                     WHERE Line_Type__c=:screen AND OpportunityLineItem.Opportunity.Products_and_Services_Portfolio_SFID__c =: psp2pFSF.Products_and_Services_Portfolio_SFID__c and OpportunityLineItem.Product2Id=:psp2pFSF.Product_SFID__c])
+            {
+                OLISKey = olis.OpportunityLineItem.Opportunity.AccountId+'_'+olis.OpportunityLineItem.Product2Id;
+                if(screen == 'Quarterly'){
+                    OLISKey = OLISKey+'_'+olis.Quarter_Name__c;
+                } else {
+                    OLISKey = OLISKey+'_'+olis.Month__c;
+                }
+                fsfOlisMap.put(OLISKey,olis);
+            }
+            String terrName = [Select DeveloperName from Territory2 where Id=: territoryId limit 1].DeveloperName;
+            terrName = terrName.subStringAfter('_').toUpperCase();
+            getProductSales(terrName,currSeasons[0],'Product',screen,psp2pISF.Product_SFID__c,granularity);
+            getProductSalesManual(terrName,currSeasons[0],'Product',screen,psp2pISF.Product_SFID__c,granularity,seasonGranularity);
+            getProductSalesCurrentYear(terrName,currSeasons[0],'Product',screen,psp2pISF.Product_SFID__c,granularity);            
+            generatedOLILst = generateOLISWrapper(oliLst,fsfOlisMap,currSeasonMap,futSeasonMap,granularity,screen,null);
+            return generatedOLILst;
+        } catch(Exception ex) { 
+            errorMessage='Error in generateOLISForProduct=='+ ex.getMessage()+'==ON Line== '+ex.getLineNumber();
+            system.debug(LoggingLevel.DEBUG,errorMessage);
+            throw new AurahandledException(errorMessage);
+        }
+        
+    }
+    
+    /*
+* Method Name : generateOLISWrapper
+* Description : creating OLIS Wrapper
+* Params      : oliLst,fsfOlisMap,currSeasonMap,futSeasonMap,granularity,screen.
+*/
+    public static List<gsfpClsSalesplanWrapper.OLISParentWrapper> generateOLISWrapper(List<OpportunityLineItem> oliLst,Map<String,OpportunityLineItemSchedule> fsfOlisMap, Map<String,Season__c> currSeasonMap,Map<String,Season__c> futSeasonMap,String granularity,String screen,Map<String,gsfpClsAccProdDistributionUtility.SalesTargetWrapper> salesTargetMap){
+        
+        Map<String,String> accClassMap = new Map<String,String>();
+        String uom;
+        String typeValue;
+        String countryCode = currSeasonMap.values()[0].Country_cd__c;
+        Country_Currency_Setting__mdt currUOMMdt = new Country_Currency_Setting__mdt();
+        currUOMMdt = [Select Id, Currency_ISO_Code__c from Country_Currency_Setting__mdt where DeveloperName =:countryCode limit 1];
+        Integer currentYear = Integer.valueOf(currSeasonMap.values()[0].Year__c);
+        generateOLISMap(currentYear);
+        gsfpClsSalesplanWrapper.OLISParentWrapper oliProductWrapper = new gsfpClsSalesplanWrapper.OLISParentWrapper();
+        List<gsfpClsSalesplanWrapper.OLISParentWrapper> oliProductLst  = new List<gsfpClsSalesplanWrapper.OLISParentWrapper>();
+        gsfpClsSalesplanWrapper.OLISChildWrapper oliProductScheduleWrapper = new gsfpClsSalesplanWrapper.OLISChildWrapper();
+        List<gsfpClsSalesplanWrapper.OLISChildWrapper> olisProductInfoSchLst = new List<gsfpClsSalesplanWrapper.OLISChildWrapper>();
+        Season__c currSeason = new Season__c();
+        Season__c futSeason = new Season__c();
+        String prevBaseKey;
+        List<String> prevKeys;
+        Boolean isCurrAPSubmitted = false;
+        Boolean isFutAPSubmitted = false;
+        Boolean isFutFSFSubmitted = false;
+        Boolean isActualFreezed = false;
+        Boolean isForecastFreezed = false;
+        DateTime dt = DateTime.newInstance(System.today().year(),System.today().month(),System.today().day());
+        String monthName = dt.format('MMMM');
+        Map<String,Decimal> altUOMs = new Map<String,Decimal>();
+        //try{
+        for (OpportunityLineItem oli : oliLst) /*IN: currSeasIds*/ /*AND Opportunity.Products_and_Services_Portfolio_SFID__c =: pspId])*/
+        {
+            oliProductWrapper = new gsfpClsSalesplanWrapper.OLISParentWrapper();
+            oliProductWrapper.OLIId = oli.Id;
+            oliProductWrapper.accountName = oli.Opportunity.Account.Name;
+            oliProductWrapper.productName = oli.Product2.Name;
+            oliProductWrapper.productFamily = oli.Products_Services_Portfolio_To_Product__r.Products_and_Services_Portfolio_SFID__r.Product_Group__c;
+            oliProductWrapper.accountPrioritization = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.CRM_Account_RADL_New__c)!= null ? string.valueOf(oli.Opportunity.Account.CRM_Account_RADL_New__c):' ','Account_Prioritization',true);
+            oliProductWrapper.soldTo_shipTo = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Account_Group__c)!= null ? string.valueOf(oli.Opportunity.Account.Account_Group__c):' ','Soldto_Shipto',true);
+            oliProductWrapper.classification = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Account_Classification_Descr__c)!= null ? string.valueOf(oli.Opportunity.Account.Account_Classification_Descr__c):' ','classification',true);
+            oliProductWrapper.classificationGroup = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Classification_Group_Descr__c)!= null ? string.valueOf(oli.Opportunity.Account.Classification_Group_Descr__c):' ','classificationGroup',true);
+            if(salesTargetMap != null)
+                oliProductWrapper.currSalesTarget = salesTargetMap.containsKey(oli.Products_Services_Portfolio_To_Product__c) ? salesTargetMap.get(oli.Products_Services_Portfolio_To_Product__c) : new gsfpClsAccProdDistributionUtility.SalesTargetWrapper(0,0,0,0,oli.Product2.QuantityUnitOfMeasure,0,0);
+            //oliProductWrapper.isVisible =true;
+            accClassMap = (oliProductWrapper.classificationGroup.valueStr == 'RTM-PARTNER') ? olisRTMMap : olisFarmMap;
+            currSeason = currSeasonMap.get(oli.Opportunity.Product_Group__c);
+            futSeason = futSeasonMap.get(oli.Opportunity.Product_Group__c);
+            generateDueDates(currSeason.Country_Cd__c,Integer.valueOf(currSeason.Year__c));
+            seasonOpenCheck(currSeason, futSeason, granularity, screen);
+            olisProductInfoSchLst = new List<gsfpClsSalesplanWrapper.OLISChildWrapper>();
+            prevBaseKey = oli.Opportunity.AccountId+'_'+oli.Product2Id;
+            prevKeys = new List<String>{prevBaseKey+'_'+String.valueOf(currentYear-1),prevBaseKey+'_'+String.valueOf(currentYear-2),prevBaseKey+'_'+String.valueOf(currentYear-2)};
+                isCurrAPSubmitted = (oli.Opportunity.Sales_Manager_Approval_Status__c == 'Submitted' || oli.Opportunity.Sales_Manager_Approval_Status__c == 'Approved') ? true : false;
+            
+            if(screen == 'Monthly'){
+                oliProductWrapper.openingInv = fetchOpeningInventory(oli.Opportunity.Territory2Id,currSeason, oli.Opportunity.AccountId, oli.Product2Id);
+            }
+            //UOM Logic
+            altUOMs = new Map<String,Decimal>();
+            if(oli.Product2.QuantityUnitOfMeasure != null){ 
+                oliProductWrapper.UOM = oli.Product2.QuantityUnitOfMeasure;
+                if(oli.Product2.Alt_UoM1__c != null && oli.Product2.Alt_UoM1_CF__c != null){
+                    altUOMs.put(oli.Product2.Alt_UoM1__c,oli.Product2.Alt_UoM1_CF__c);
+                }
+                if(oli.Product2.Alt_UoM2__c != null && oli.Product2.Alt_UoM2_CF__c != null){
+                    altUOMs.put(oli.Product2.Alt_UoM2__c,oli.Product2.Alt_UoM2_CF__c);
+                }
+                if(oli.Product2.Alt_UoM3__c != null && oli.Product2.Alt_UoM3_CF__c != null){
+                    altUOMs.put(oli.Product2.Alt_UoM3__c,oli.Product2.Alt_UoM3_CF__c);
+                }    
+            }
+            
+            if(altUOMs != null){
+                oliProductWrapper.altUOMs = altUOMs; 
+            }
+            
+            oliProductWrapper.selectedUOM = oli.Selected_UOM__c;
+            for(OpportunityLineItemSchedule olis : oli.OpportunityLineItemSchedules)
+            {
+                
+                if(screen == 'Monthly'){
+                    isActualFreezed = false ;
+                    isForecastFreezed = false;
+                    
+                    if(dueDateMap != null && dueDateMap.containskey(olis.Month__c+'_'+olis.Year__c)) {
+                        isForecastFreezed =  system.today() > dueDateMap.get(olis.Month__c+'_'+olis.Year__c).Due_Date__c ? true : false;                     
+                        isActualFreezed =  ((system.today() > dueDateMap.get(olis.Month__c+'_'+olis.Year__c).ActualsDueDate__c && olis.Month__c == monthName) || olis.Month__c != monthName)    ? true : false;//
+                        //isActualFreezed =  ((system.today() > dueDateMap.get(olis.Month__c+'_'+olis.Year__c).ActualsDueDate__c) ||  (Integer.valueOf(monthsNumMap.get(olis.Month__c)) > Integer.valueOf(monthsNumMap.get(monthName))))  ? true : false;//&& (olis.Month__c == monthName)) || (olis.Month__c != monthName)          
+                        
+                    }
+                    system.debug('dueDateMap=='+dueDateMap);
+                    
+                }
+                
+                //OLI
+                for(String inp : accClassMap.keySet())
+                { 
+                    //Sell In Sales Plan
+                    for(String inp2 : inputValuesMap.get(inp))
+                    {       
+                        //Sell In Sales Plan - cyvolume, cyvalue
+                        oliProductScheduleWrapper = new gsfpClsSalesplanWrapper.OLISChildWrapper();
+                        oliProductScheduleWrapper.isVisible =true;
+                        if(inp2.contains(fy)){
+                            OLISKey = oli.Opportunity.AccountId+'_'+oli.Product2Id;
+                            if(screen == 'Quarterly'){
+                                OLISKey = OLISKey+'_'+olis.Quarter_Name__c;
+                            } else {
+                                OLISKey = OLISKey+'_'+olis.Month__c;
+                            }
+                            oliProductScheduleWrapper.OLISId = fsfOlisMap.containsKey(OLISKey) ? fsfOlisMap.get(OLISKey).Id : null;
+                            oliProductScheduleWrapper.netPrice = fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.PSPTP_NetPrice__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.PSPTP_NetPrice__c : 0;
+                            isFutAPSubmitted = fsfOlisMap.containsKey(OLISKey) && (fsfOlisMap.get(OLISKey).OpportunityLineItem.Opportunity.Sales_Manager_Approval_Status__c == 'Submitted' || fsfOlisMap.get(OLISKey).OpportunityLineItem.Opportunity.Sales_Manager_Approval_Status__c == 'Approved') ? true : false;
+                            isFutFSFSubmitted = fsfOlisMap.containsKey(OLISKey) && (fsfOlisMap.get(OLISKey).OpportunityLineItem.Opportunity.FSF_Approval_Status__c == 'Submitted' || fsfOlisMap.get(OLISKey).OpportunityLineItem.Opportunity.FSF_Approval_Status__c == 'Approved') ? true : false;
+                            if(salesTargetMap != null)
+                                oliProductWrapper.futSalesTarget = fsfOlisMap.containsKey(OLISKey) && salesTargetMap.containsKey(fsfOlisMap.get(OLISKey).OpportunityLineItem.Products_Services_Portfolio_To_Product__c) ? salesTargetMap.get(fsfOlisMap.get(OLISKey).OpportunityLineItem.Products_Services_Portfolio_To_Product__c) : new gsfpClsAccProdDistributionUtility.SalesTargetWrapper(0,0,0,0,oli.Product2.QuantityUnitOfMeasure,0,0);
+                        }else {
+                            oliProductScheduleWrapper.OLISId = olis.Id;
+                            oliProductScheduleWrapper.netPrice = oli.PSPTP_NetPrice__c != null ? oli.PSPTP_NetPrice__c : 0;
+                        }
+                        
+                        oliProductScheduleWrapper.input = inp;
+                        oliProductScheduleWrapper.inputLabel = accClassMap.get(inp);
+                        oliProductScheduleWrapper.row = inp2;
+                        oliProductScheduleWrapper.rowLabel =  accClassMap.get(inp) +';'+ inp2;
+                        oliProductScheduleWrapper.isActualsClosed = (dueDateMap != null && dueDateMap.containskey(olis.Month__c+'_'+olis.Year__c)) ? (system.today() > dueDateMap.get(olis.Month__c+'_'+olis.Year__c).ActualsDueDate__c ? true : false):false;
+                        if(screen == 'Quarterly'){
+                            oliProductScheduleWrapper.quarter = olis.Quarter_Name__c;//+' ('+olis.Year__c+')';
+                            typeValue =  olis.Quarter_Name__c;
+                        } else {
+                            oliProductScheduleWrapper.month = olis.Month__c.substring(0,3);//+' ('+olis.Year__c+')';
+                            typeValue =  olis.Month__c.substring(0,3);
+                        }
+                        
+                        uom = inp2.contains('Value') ? currUOMMdt.Currency_ISO_Code__c : oli.Selected_UOM__c != null ? oli.Selected_UOM__c : oli.Product2.QuantityUnitOfMeasure;
+                        
+                        if(inp2.contains(cy)) {
+                            if(inp == 'Sell_In_Sales_Plan'){
+                                if(inp2 == cyValue){
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Planned_Sell_In_Amount__c != null ? olis.Planned_Sell_In_Amount__c : 0, true, typeValue, false, olis.Id, uom, oli.Planned_Sell_In_Qty__c != null ? oli.Planned_Sell_In_Qty__c * oliProductScheduleWrapper.netPrice : 0);//Planned_Sell_In_Amount__c
+                                } else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Planned_Sell_In_Qty__c != null ? olis.Planned_Sell_In_Qty__c : 0, true, typeValue, screen != 'Quarterly' && isAPMet == true && isCurrAPSubmitted == false ? true : false, olis.Id, uom, oli.Planned_Sell_In_Qty__c);
+                                }
+                            } else if (inp == 'Sell_In_Actuals') {
+                                //oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0 , true, typeValue, false, olis.Id, uom, 0);
+                                if (inp2 == cyVolume)
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'D') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'D').get('salesQty') : 0 , true, typeValue, false, olis.Id, uom, 0);
+                                else if (inp2 == cyValue)
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'D') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'D').get('salesAmt') : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            }
+                            else if(inp == 'Sell_In_Forecast') {
+                                if(inp2 == cyISFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, olis.Id, uom,oli.Forecast_Qty__c != null ? oli.Forecast_Qty__c  * oliProductScheduleWrapper.netPrice : 0);// oli.ISF_Sell_In_Amount__c
+                                else if (inp2 == cyISFVolume)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.Forecast_Qty__c != null ? olis.Forecast_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isISFMet == true && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Forecast_Qty__c);
+                                else if (inp2 == cyFSFVolume)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.FSF_Sell_In_Quantity__c != null ? olis.FSF_Sell_In_Quantity__c : 0, true, typeValue, false, olis.Id, uom, oli.FSF_Sell_In_Qty__c);
+                                else if (inp2 == cyFSFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.FSF_Sell_In_Amount__c != null ? olis.FSF_Sell_In_Amount__c : 0, true, typeValue, false, olis.Id, uom,oli.FSF_Sell_In_Qty__c != null ? oli.FSF_Sell_In_Qty__c * oliProductScheduleWrapper.netPrice : 0);// oli.FSF_Sell_In_Amount__c
+                            } else if(inp == 'Sell_In_Upsides') {
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Upsides_Above_Allocation_Sell_In__c != null ? olis.Upsides_Above_Allocation_Sell_In__c : 0, true, typeValue,screen != 'Quarterly' && isISFMet == true  && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Upsides_Above_Allocation_Sell_In__c);
+                            } else if(inp == 'Sell_Out_Upsides') {
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Upsides_Above_Allocation_Sell_Out__c != null ? olis.Upsides_Above_Allocation_Sell_Out__c : 0, true,typeValue,screen != 'Quarterly' && isISFMet == true  && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Upsides_Above_Allocation_Sell_Out__c);
+                            } else if(inp == 'Returns_Forecast') {
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Returns_Forecast__c != null ? olis.Returns_Forecast__c : 0, true, typeValue,screen != 'Quarterly' && isISFMet == true  && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Returns_Forecast__c);
+                            } else if(inp == 'Returns_Actuals') {
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0 , true, typeValue, false, olis.Id, uom, 0);
+                            } else if(inp == 'Inventory_Forecast'){
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Inventory_Qty__c , true, typeValue, false, olis.Id, uom, oli.Inventory_Qty__c);
+                            } else if(inp == 'Inventory_Actuals'){
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Actual_Inventory_Qty__c != null ? olis.Actual_Inventory_Qty__c : 0 , true, typeValue, screen != 'Quarterly' && isISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, oli.Actual_Inventory_Qty__c);
+                            } else if(inp == 'Sell_Out_Sales_Plan') {
+                                if(inp2 == cyValue) {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Planned_Sell_Out_Amount__c != null ? olis.Planned_Sell_Out_Amount__c : 0, true, typeValue, false, olis.Id, uom,oli.Planned_Sell_Out_Qty__c != null ? oli.Planned_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);// oli.Planned_Sell_Out_Amount__c
+                                }
+                                else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Planned_Sell_Out_Qty__c != null ? olis.Planned_Sell_Out_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isAPMet == true && isCurrAPSubmitted == false ? true : false, olis.Id, uom, oli.Planned_Sell_Out_Qty__c);
+                                }
+                                
+                            } 
+                            else if (inp == 'Sell_Out_Actuals') {
+                                // oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0 , true, typeValue, false, olis.Id, uom, 0);Actual_Inventory_Qty__c
+                                // pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') : 0
+                                
+                                if (inp2 == cySellOutVolumeTotal){                                    
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Actual_Sell_Out_Qty__c != null ? olis.Actual_Sell_Out_Qty__c : 0, true, typeValue, false, olis.Id, uom, oli.Actual_Sell_Out_Qty__c);//pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') : 0                                        
+                                }
+                                
+                                else if (inp2 == cyVolume){
+                                    if(cySalesMap != null && cySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I')){
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis((Decimal) cySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') , true, typeValue,false, olis.Id, uom, 0);//pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') : 0
+                                    }else{
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, olis.Id, uom, 0);
+                                    }
+                                }
+                                
+                                else if (inp2 == cyVolumeManual){
+                                    if(pyManualSalesMap != null && pyManualSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I')){
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis((Decimal) pyManualSalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') , true, typeValue,screen != 'Quarterly' && isISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, 0);
+                                    }else{
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,screen != 'Quarterly' && isISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, 0);
+                                    }
+                                } else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, oli.Actual_Sell_Out_Qty__c !=null ? oli.Actual_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);//pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') : 0                                        
+                                }   
+                                
+                            }
+                            else if(inp == 'Sell_Out_Forecast') {
+                                if(inp2 == cyISFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, olis.Id, uom, oli.Sell_Out_Qty__c != null ? oli.Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                else if (inp2 == cyISFVolume) 
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.Sell_Out_Qty__c != null ? olis.Sell_Out_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isISFMet == true && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Sell_Out_Qty__c);  
+                                else if (inp2 == cyFSFVolume)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.FSF_SellOut__c != null ? olis.FSF_SellOut__c : 0, true, typeValue, false, olis.Id, uom, oli.FSF_Sell_Out_Qty__c);
+                                else if (inp2 == cyFSFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.FSF_Sell_Out_Amount__c != null ? olis.FSF_Sell_Out_Amount__c : 0, true, typeValue,false, olis.Id, uom, oli.FSF_Sell_Out_Qty__c != null ? oli.FSF_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice :0);//oli.FSF_Sell_Out_Amount__c
+                            } else if(inp == 'POG') { 
+                                if (inp2 == cyVolume){
+                                	oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.POG_Actuals_Qty__c !=null ? olis.POG_Actuals_Qty__c : 0 , true, typeValue, false, olis.Id, uom, oli.POG_Actuals_Qty__c !=null ? oli.POG_Actuals_Qty__c: 0);
+                                } else if (inp2 == cyValue){ 
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.POG_Actuals_Qty__c != null ? olis.POG_Actuals_Qty__c : 0 , true, typeValue, false, olis.Id, uom, oli.POG_Actuals_Qty__c !=null ? oli.POG_Actuals_Qty__c* oliProductScheduleWrapper.netPrice : 0);
+                                }
+                           }   
+                        } 
+                        else if(inp2.contains(fy)){                        
+                            if(inp == 'Sell_In_Forecast'){
+                                if(inp2 == fyFSFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).FSF_Sell_In_Amount__c != null ?  fsfOlisMap.get(OLISKey).FSF_Sell_In_Amount__c : 0, true, typeValue,false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c * oliProductScheduleWrapper.netPrice : 0);//  fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Amount__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Amount__c : 0);
+                                else
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).FSF_Sell_In_Quantity__c != null ?  fsfOlisMap.get(OLISKey).FSF_Sell_In_Quantity__c : 0, true, typeValue,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Is_FSF_Freezed__c == false && isCy1FSFMet == true && isFutFSFSubmitted == false ? true : false,oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c : 0);//fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c : 0);
+                            }
+                            
+                            else if(inp == 'Sell_Out_Forecast'){
+                                if(inp2 == fyFSFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).FSF_Sell_Out_Amount__c != null ?  fsfOlisMap.get(OLISKey).FSF_Sell_Out_Amount__c : 0, true, typeValue,false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);//fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Amount__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Amount__c : 0);
+                                else
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).FSF_SellOut__c != null ?  fsfOlisMap.get(OLISKey).FSF_SellOut__c : 0, true, typeValue,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Is_FSF_Freezed__c == false && isCy1FSFMet == true && isFutFSFSubmitted == false ? true : false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c : 0); //fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c : 0);
+                            }
+                            
+                            else if (inp == 'Sell_In_Sales_Plan'){
+                                if(inp2 == fyvalue){
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Planned_Sell_In_Amount__c != null ? fsfOlisMap.get(OLISKey).Planned_Sell_In_Amount__c : 0, true, typeValue, false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Qty__c * oliProductScheduleWrapper.netPrice : 0);//fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Amount__c
+                                } else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Planned_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).Planned_Sell_In_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isCy1APMet == true && isFutAPSubmitted == false ? true : false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Qty__c : 0);
+                                }
+                            } else if(inp == 'Sell_Out_Sales_Plan') {
+                                if(inp2 == fyvalue) {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Planned_Sell_Out_Amount__c != null ? fsfOlisMap.get(OLISKey).Planned_Sell_Out_Amount__c : 0, true, typeValue, false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);//fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Amount__c
+                                }
+                                else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Planned_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).Planned_Sell_Out_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isCy1APMet == true && isFutAPSubmitted == false ? true : false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Qty__c : 0);
+                                }
+                                
+                            }
+                        }
+                        else if(inp == 'Sell_Out_Actuals' || inp == 'Sell_In_Actuals') {
+                            system.debug('pySalesMap=='+pySalesMap);
+                            system.debug('prevKeys=='+prevKeys[0]+'_'+typeValue+'_'+'I');
+                            system.debug('inp2=='+inp2);
+                            String ind = inp == 'Sell_Out_Actuals' ? 'I' : 'D';
+                            if(inp2 == pyVolume)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[0]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[0]+'_'+typeValue+'_'+ind).get('salesQty') : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == pyValue)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[0]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[0]+'_'+typeValue+'_'+ind).get('salesAmt') : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == py2Volume)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[1]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[1]+'_'+typeValue+'_'+ind).get('salesQty') : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == py2Value)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[1]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[1]+'_'+typeValue+'_'+ind).get('salesAmt') : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == py3Volume)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[2]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[2]+'_'+typeValue+'_'+ind).get('salesQty') : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == py3Value)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[2]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[2]+'_'+typeValue+'_'+ind).get('salesAmt') : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            
+                            
+                        }
+                        else {
+                            oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0 , true, typeValue, false, olis.Id, uom, 0);
+                        }
+                        // oliProductScheduleWrapper.value =new gsfpClsSalesplanWrapper.dataOlis(5000 , true, typeValue, false, olis.Id, uom, 0);
+                        olisProductInfoSchLst.add(oliProductScheduleWrapper);
+                    } //for loop 
+                } //Keyset map loop
+            }//OLIS loop
+            oliProductWrapper.OLIS = olisProductInfoSchLst;
+            oliProductLst.add(oliProductWrapper);            
+        }
+        return oliProductLst;   
+        /*}  catch(Exception ex) { 
+errorMessage='Error in generateOLISForAccount=='+ ex.getMessage()+'==ON Line== '+ex.getLineNumber();
+system.debug(LoggingLevel.DEBUG,errorMessage);
+throw new AurahandledException(errorMessage);
+}*/       
+    }
+    
+    /*
+* Method Name : getProductSales
+* Description : 
+* Params      : terrId,currSeason,distType,screen,accPrdId.
+*/
+    public static void getProductSales(String terrName,Season__c currSeason,String distType,String screen, String accPrdId, String granularity) {
+        pySalesMap = new Map<String,AggregateResult>();        
+        Integer currYr = Integer.ValueOf(currSeason.Year__c);
+        Set<String> preYrs = new Set<String>{String.ValueOf(currYr-1),String.ValueOf(currYr-2),String.ValueOf(currYr-3),String.ValueOf(currYr)};
+            String query;
+        String seasCd = currSeason.Season_Cd__c;       
+        system.debug('seasCd=='+seasCd);
+        
+        /* AggregateResult[] groupedResults = [SELECT Account_SFID__c,Product_SFID__c,Calendar_Year__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt
+FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:currSeason.Season_Cd__c and Calendar_Year__c IN: preYrs
+GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,SalesIndicartor__c];*/
+        if(distType == 'Account') {
+            if(screen == 'Quarterly'){
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+            } else {
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+                else
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+            } 
+        } else if (distType == 'Product') {
+            if(screen == 'Quarterly'){
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else 
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+            } else {
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+            }
+        }
+        
+        String pySalesKey;
+        for(AggregateResult ar:Database.query(query)){
+            if(screen == 'Quarterly')
+                pySalesKey = ar.get('Account_SFID__c')+'_'+ar.get('parentHybrid')+'_'+ar.get('Calendar_Year__c')+'_'+ar.get('Quarter_Name__c')+'_'+ar.get('SalesIndicartor__c');
+            else
+                pySalesKey = ar.get('Account_SFID__c')+'_'+ar.get('parentHybrid')+'_'+ar.get('Calendar_Year__c')+'_'+String.ValueOf(ar.get('Month_Name__c')).substring(0,3)+'_'+ar.get('SalesIndicartor__c');
+            
+            pySalesMap.put(pySalesKey,ar);
+        }
+    }
+    
+    /*
+* Method Name : getProductSalesManual
+* Description : 
+* Params      : terrId,currSeason,distType,screen,accPrdId.
+*/
+    public static void getProductSalesManual(String terrName,Season__c currSeason,String distType,String screen, String accPrdId, String granularity,String seasonGranularity) {
+        pyManualSalesMap = new Map<String,AggregateResult>();        
+        Integer currYr = Integer.ValueOf(currSeason.Year__c); 
+        Set<String> preYrs = new Set<String>{String.ValueOf(currYr-1),String.ValueOf(currYr-2),String.ValueOf(currYr-3),String.ValueOf(currYr)};
+            String query;
+        String seasCd = currSeason.Season_Cd__c;
+        String sourceDescr='GI';
+        if(distType == 'Account') {
+            if(screen == 'Quarterly'){
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else if (granularity == 'Treatment')
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+            } else {
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+                else
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Account_SFID__c=: accPrdId  GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+            } 
+        } else if (distType == 'Product') {
+            if(screen == 'Quarterly'){
+                if(seasonGranularity == MATERIAL_DESC || Test.isRunningTest()){
+                    if (granularity == BRAND)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                    else if (granularity == PRODUCT)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                    else if (granularity == TREATMENT)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr  and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                    else 
+                        query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                    
+                } else if(seasonGranularity == PRODUCT){
+                    if (granularity == BRAND)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                    else
+                        query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                } else if(seasonGranularity== TREATMENT){
+                    if (granularity == BRAND)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                    else if (granularity == PRODUCT)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                    else
+                        query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr  and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                }else if(seasonGranularity== BRAND){
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr  and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                }
+            } else {
+                if(seasonGranularity == MATERIAL_DESC || Test.isRunningTest()){
+                    if (granularity == BRAND)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    else if (granularity == PRODUCT)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    else if (granularity == TREATMENT)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    else
+                        query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__c=: accPrdId  GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                }else if(seasonGranularity == PRODUCT){
+                    if (granularity == BRAND)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    else
+                        query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    
+                }else if(seasonGranularity == TREATMENT){
+                    if (granularity == BRAND)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    else if(granularity == PRODUCT)
+                        query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__r.Parent_Hybrid__c=: accPrdId  GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    else
+                        query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    
+                }else if(seasonGranularity == BRAND){
+                    if (granularity == BRAND)
+                        query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c=:sourceDescr and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                    
+                }
+            }
+        }
+        
+        String pyManualSalesKey;
+        for(AggregateResult ar:Database.query(query)){
+            if(screen == 'Quarterly')
+                pyManualSalesKey = ar.get('Account_SFID__c')+'_'+ar.get('parentHybrid')+'_'+ar.get('Calendar_Year__c')+'_'+ar.get('Quarter_Name__c')+'_'+ar.get('SalesIndicartor__c');
+            else
+                pyManualSalesKey = ar.get('Account_SFID__c')+'_'+ar.get('parentHybrid')+'_'+ar.get('Calendar_Year__c')+'_'+String.ValueOf(ar.get('Month_Name__c')).substring(0,3)+'_'+ar.get('SalesIndicartor__c');
+            
+            pyManualSalesMap.put(pyManualSalesKey,ar);
+        }
+    } 
+    
+    /*
+* Method Name : getProductSalesCurrentYear
+* Description : 
+* Params      : terrId,currSeason,distType,screen,accPrdId.
+*/
+    public static void getProductSalesCurrentYear(String terrName,Season__c currSeason,String distType,String screen, String accPrdId, String granularity) {
+        cySalesMap = new Map<String,AggregateResult>();        
+        Integer currYr = Integer.ValueOf(currSeason.Year__c); 
+        Set<String> preYrs = new Set<String>{String.ValueOf(currYr)};
+            String query;
+        String seasCd = currSeason.Season_Cd__c;
+        String sourceDescr='GI';
+        if(distType == 'Account') {
+            if(screen == 'Quarterly'){
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+            } else {
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+                else
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Account_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';  
+            } 
+        } else if (distType == 'Product') {
+            if(screen == 'Quarterly'){
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+                else 
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Quarter_Name__c,SalesIndicartor__c';
+            } else {
+                if (granularity == BRAND)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else if (granularity == PRODUCT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else if (granularity == TREATMENT)
+                    query = 'SELECT Account_SFID__c,Product_SFID__r.Parent_Hybrid__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=: sourceDescr and Product_SFID__r.Parent_Hybrid__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__r.Parent_Hybrid__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+                else
+                    query = 'SELECT Account_SFID__c,Product_SFID__c parentHybrid,Calendar_Year__c,Month_Name__c,SalesIndicartor__c,SUM(Net_Sales_Qty_Local__c) salesQty,SUM(Net_Sales_Amt_Local__c) salesAmt FROM Product_Sales__c WHERE Territory_Cd__c=:terrName and Season_Cd__c=:seasCd and Calendar_Year__c IN: preYrs AND Source_System_Descr__c !=:sourceDescr and Product_SFID__c=: accPrdId GROUP BY Account_SFID__c,Product_SFID__c,Calendar_Year__c,Month_Name__c,SalesIndicartor__c';
+            }
+        }
+        
+        String cySalesKey;
+        for(AggregateResult ar:Database.query(query)){
+            if(screen == 'Quarterly')
+                cySalesKey = ar.get('Account_SFID__c')+'_'+ar.get('parentHybrid')+'_'+ar.get('Calendar_Year__c')+'_'+ar.get('Quarter_Name__c')+'_'+ar.get('SalesIndicartor__c');
+            else
+                cySalesKey = ar.get('Account_SFID__c')+'_'+ar.get('parentHybrid')+'_'+ar.get('Calendar_Year__c')+'_'+String.ValueOf(ar.get('Month_Name__c')).substring(0,3)+'_'+ar.get('SalesIndicartor__c');
+            
+            cySalesMap.put(cySalesKey,ar);
+        }
+    } 
+    Public static Decimal fetchOpeningInventory(String terrId,Season__c currSeason, String accId, String productId){
+        Decimal OpenInv = 0;
+        String prevyr = String.valueOf(Integer.valueOf(currSeason.Year__c)-1);
+        List<OpportunityLineItemSchedule> previousOLIS = [Select Actual_Inventory_Qty__c from OpportunityLineItemSchedule 
+                                                          Where OpportunityLineItem.Product2Id =: productId AND
+                                                          OpportunityLineItem.Opportunity.Territory2Id =: terrId AND
+                                                          OpportunityLineItem.Opportunity.AccountId =: accId AND
+                                                          OpportunityLineItem.Opportunity.Season_SFID__r.Season_Cd__c =: currSeason.Season_Cd__c AND
+                                                          OpportunityLineItem.Opportunity.Season_SFID__r.Year__c =: prevyr AND
+                                                          OpportunityLineItem.Opportunity.Product_Group__c =: currSeason.Product_Group__c AND Line_Type__c = 'Monthly' ORDER BY Year__c,fCalendarMonth__c DESC LIMIT 1];
+        if(!previousOLIS.isEmpty()){
+            OpenInv = previousOLIS[0].Actual_Inventory_Qty__c != null ? previousOLIS[0].Actual_Inventory_Qty__c : 0;
+        }
+        return OpenInv; 
+    }
+    
+    
+    Public static void generateDueDates(String countryCode, Integer Year){
+        dueDateMap = new Map<String,GSP_ISF_Due_Dates__c>();
+        Map<String,String> monthsMap = new Map<String,String>{
+            '1' => 'January',
+                '2' => 'February',
+                '3' => 'March',
+                '4' => 'April',
+                '5' => 'May',
+                '6' => 'June',
+                '7' => 'July',
+                '8' => 'August',
+                '9' => 'September',
+                '10' => 'October',
+                '11' => 'November',
+                '12' => 'December'
+                };
+                    for(GSP_ISF_Due_Dates__c dueDt : [Select Month__c,Year__c,Due_Date__c,ActualsDueDate__c from  GSP_ISF_Due_Dates__c 
+                                                      where Country_Cd__c =: countryCode and (Year__c =:year or Year__c=: (year+1)) and Month__c!= null and Due_Date__c != null and ActualsDueDate__c != null]){
+                                                          dueDateMap.put(monthsMap.get(String.valueOf(dueDt.Month__c))+'_'+dueDt.Year__c,dueDt);
+                                                      }
+        
+    }
+    
+    
+}

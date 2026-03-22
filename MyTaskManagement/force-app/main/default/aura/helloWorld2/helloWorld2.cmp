@@ -1,0 +1,24 @@
+<aura:component implements="flexipage:availableForAllPageTypes" access="global">
+	<h1>helloWorld2</h1>
+    
+   <div>
+       <div class="red"> I am red</div>
+       <div class="blue"> I am blue </div>     
+    </div>
+    <aura:attribute name="num1" type="Integer" default="30" access="global"/>
+    <aura:attribute name="num2" type="Integer" default="25" access="global"/>
+    <aura:attribute name="SUM" type="Integer" access="global"/>
+            {!v.num1}+{!v.num2}={!v.SUM}
+    		
+            <ui:button label="press me" press="{!c.add}" />
+    <aura:attribute name="val" type="Boolean" default="true" access="global"/>
+    <aura:if isTrue="{!v.val}">
+        <ui:button label="fuck me"/>        
+        <aura:set attribute="else">
+        	<ui:button label="fuck you"/>
+        </aura:set>
+   </aura:if>   
+
+   
+    
+</aura:component>

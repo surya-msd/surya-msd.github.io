@@ -1,0 +1,12 @@
+<aura:component implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId" access="global" >
+    <aura:attribute name="accName" type = "String"/>
+     <aura:registerEvent name="InputCarryEvent" type="c:InputCarryEvent"/>
+    <lightning:card iconName="standard:account">
+    <lightning:layout >
+        	<lightning:layoutItem size="6"  padding = "around-small">
+                <lightning:input label = "Account Name" type="text" value="{!v.accName}" onchange="{!c.handlechangeAccName}"/>
+            </lightning:layoutItem>
+    </lightning:layout>
+    </lightning:card>
+    
+</aura:component>

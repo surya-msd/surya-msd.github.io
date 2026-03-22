@@ -1,0 +1,20 @@
+<aura:component controller="OpportunitySearchClass" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global" >
+    
+    <aura:attribute name="lstOpportnuities" type="Opportunity[]"/>
+    <aura:attribute name="columnsToDisplay" type="List"/>
+    <aura:attribute name="searchKeyword" type="String"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <lightning:card iconName="standard:opportunity" title="Opportunity List">    
+	<lightning:layout>
+        <lightning:layoutItem size="3" padding="around-medium">
+            <lightning:Input aura:id="searchKeyField" label="Opportunity Name" value="{!v.searchKeyword}" placeholder="Search Opportunities" onchange="{!c.fetchWithKeyword}"/>
+              
+        </lightning:layoutItem>
+    </lightning:layout>
+    
+    <lightning:datatable keyField ="Id" data="{!v.lstOpportnuities}" columns="{!v.columnsToDisplay}"  hideCheckboxColumn="true"/>
+    </lightning:card>
+    
+</aura:component>

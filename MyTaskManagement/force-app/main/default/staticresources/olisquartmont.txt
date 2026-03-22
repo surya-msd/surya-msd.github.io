@@ -1,0 +1,390 @@
+    public static List<gsfpClsSalesplanWrapper.OLISParentWrapper> generateOLISWrapper(List<OpportunityLineItem> oliLst,Map<String,OpportunityLineItemSchedule> fsfOlisMap, Map<String,Season__c> currSeasonMap,Map<String,Season__c> futSeasonMap,String granularity,String screen,Map<String,gsfpClsAccProdDistributionUtility.SalesTargetWrapper> salesTargetMap){
+        
+        Map<String,String> accClassMap = new Map<String,String>();
+        String uom;
+        String typeValue;
+        String countryCode = currSeasonMap.values()[0].Country_cd__c;
+        Country_Currency_Setting__mdt currUOMMdt = new Country_Currency_Setting__mdt();
+        currUOMMdt = [Select Id, Currency_ISO_Code__c from Country_Currency_Setting__mdt where DeveloperName =:countryCode limit 1];
+        Integer currentYear = Integer.valueOf(currSeasonMap.values()[0].Year__c);
+        generateOLISMap(currentYear);
+        gsfpClsSalesplanWrapper.OLISParentWrapper oliProductWrapper = new gsfpClsSalesplanWrapper.OLISParentWrapper();
+        List<gsfpClsSalesplanWrapper.OLISParentWrapper> oliProductLst  = new List<gsfpClsSalesplanWrapper.OLISParentWrapper>();
+        gsfpClsSalesplanWrapper.OLISChildWrapper oliProductScheduleWrapper = new gsfpClsSalesplanWrapper.OLISChildWrapper();
+        List<gsfpClsSalesplanWrapper.OLISChildWrapper> olisProductInfoSchLst = new List<gsfpClsSalesplanWrapper.OLISChildWrapper>();
+        Season__c currSeason = new Season__c();
+        Season__c futSeason = new Season__c();
+        String prevBaseKey;
+        List<String> prevKeys;
+        Boolean isCurrAPSubmitted = false;
+        Boolean isFutAPSubmitted = false;
+        Boolean isFutFSFSubmitted = false;
+        Boolean isActualFreezed = false;
+        Boolean isForecastFreezed = false;
+        DateTime dt = DateTime.newInstance(System.today().year(),System.today().month(),System.today().day());
+        String monthName = dt.format('MMMM');
+        Decimal selloutTotal=0;
+        Decimal sellOutManual=0;
+        Decimal sellOutExternal=0;
+        Decimal sellOutManualtotal=0;
+        Decimal sellOutExternalTotal=0;
+        Decimal currTotal=0;
+        Map<String,Decimal> altUOMs = new Map<String,Decimal>();
+        Map<String,Decimal> openInvMap = new Map<String,Decimal>();
+        Set<String> accIds = new Set<String>();
+        Set<String> prodIds = new Set<String>();
+        for (OpportunityLineItem oli : oliLst) /*IN: currSeasIds*/ /*AND Opportunity.Products_and_Services_Portfolio_SFID__c =: pspId])*/
+        {
+            accIds.add(oli.Opportunity.AccountId);
+            prodIds.add(oli.Product2Id);
+        }
+        system.debug('oliLst=='+oliLst);
+        openInvMap = fetchOpeningInventory(oliLst[0].Opportunity.Territory2Id,currSeasonMap.values()[0], accIds, prodIds);
+        //try{
+        for (OpportunityLineItem oli : oliLst) /*IN: currSeasIds*/ /*AND Opportunity.Products_and_Services_Portfolio_SFID__c =: pspId])*/
+        {
+            oliProductWrapper = new gsfpClsSalesplanWrapper.OLISParentWrapper();
+            oliProductWrapper.OLIId = oli.Id;
+            oliProductWrapper.isActualSeasFreezed=oli.Is_Actuals_Freezed__c;
+            oliProductWrapper.accountName = oli.Opportunity.Account.Name;
+            oliProductWrapper.productName = oli.Product2.Name;
+            //Import & Export - Starts 
+            /*oliProductWrapper.productId = oli.Product2Id;
+            oliProductWrapper.accountId = oli.Opportunity.AccountId;
+            oliProductWrapper.seasonId=oli.Opportunity.Season_SFID__c;*/
+            //Import & Export - Ends
+            oliProductWrapper.productFamily = oli.Products_Services_Portfolio_To_Product__r.Products_and_Services_Portfolio_SFID__r.Product_Group__c;
+            oliProductWrapper.accountPrioritization = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.CRM_Account_RADL_New__c)!= null ? string.valueOf(oli.Opportunity.Account.CRM_Account_RADL_New__c):' ','Account_Prioritization',true);
+            oliProductWrapper.soldTo_shipTo = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Account_Group__c)!= null ? string.valueOf(oli.Opportunity.Account.Account_Group__c):' ','Soldto_Shipto',true);
+           // oliProductWrapper.accountClassification = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Account_Classification__c)!= null ? string.valueOf(oli.Opportunity.Account.Account_Classification__c):' ','accountClassification',true);
+            //4854
+            if(!accMultiClassficationCountry.contains(oli.Opportunity.Account.Country_Cd__c)){
+            oliProductWrapper.classification = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Account_Classification_Descr__c)!= null ? string.valueOf(oli.Opportunity.Account.Account_Classification_Descr__c):' ','classification',true);
+            }else{
+            oliProductWrapper.classification =new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Account_Classification__c)!= null ? string.valueOf(oli.Opportunity.Account.Account_Classification__c):' ','classification',true);
+            }
+            oliProductWrapper.countryCode=new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Country_Cd__c)!= null ? string.valueOf(oli.Opportunity.Account.Country_Cd__c):' ','countryCode',true); 
+            oliProductWrapper.classificationGroup = new gsfpClsSalesplanWrapper.dataOlis(string.valueOf(oli.Opportunity.Account.Classification_Group_Descr__c)!= null ? string.valueOf(oli.Opportunity.Account.Classification_Group_Descr__c):' ','classificationGroup',true);
+            if(salesTargetMap != null)
+                oliProductWrapper.currSalesTarget = salesTargetMap.containsKey(oli.Products_Services_Portfolio_To_Product__c) ? salesTargetMap.get(oli.Products_Services_Portfolio_To_Product__c) : new gsfpClsAccProdDistributionUtility.SalesTargetWrapper(0,0,0,0,oli.Product2.QuantityUnitOfMeasure,0,0);
+            //oliProductWrapper.isVisible =true;
+            accClassMap = (oliProductWrapper.classificationGroup.valueStr == 'RTM-PARTNER') ? olisRTMMap : olisFarmMap;
+            currSeason = currSeasonMap.get(oli.Opportunity.Product_Group__c);
+            futSeason = futSeasonMap.get(oli.Opportunity.Product_Group__c);
+            generateDueDates(currSeason.Country_Cd__c,Integer.valueOf(currSeason.Year__c));
+            seasonOpenCheck(currSeason, futSeason, granularity, screen);
+            //Import & Export - Starts 
+            //oliProductWrapper.isExportOpen = isExportOpen;
+            //Import & Export - Ends 
+            olisProductInfoSchLst = new List<gsfpClsSalesplanWrapper.OLISChildWrapper>();
+            prevBaseKey = oli.Opportunity.AccountId+'_'+oli.Product2Id;
+            prevKeys = new List<String>{prevBaseKey+'_'+String.valueOf(currentYear-1),prevBaseKey+'_'+String.valueOf(currentYear-2),prevBaseKey+'_'+String.valueOf(currentYear-3)};
+                isCurrAPSubmitted = (oli.Opportunity.Sales_Manager_Approval_Status__c == 'Submitted' || oli.Opportunity.Sales_Manager_Approval_Status__c == 'Approved') ? true : false;
+            
+            if(screen == 'Monthly'){
+                oliProductWrapper.openingInv = openInvMap != null && openInvMap.containsKey(oli.Opportunity.AccountId+'_'+oli.Product2Id) ? openInvMap.get(oli.Opportunity.AccountId+'_'+oli.Product2Id) : 0 ;
+            }
+            //UOM Logic
+            altUOMs = new Map<String,Decimal>();
+            if(oli.Product2.QuantityUnitOfMeasure != null){ 
+                oliProductWrapper.UOM = oli.Product2.QuantityUnitOfMeasure;
+                if(oli.Product2.Alt_UoM1__c != null && oli.Product2.Alt_UoM1_CF__c != null){
+                    altUOMs.put(oli.Product2.Alt_UoM1__c,oli.Product2.Alt_UoM1_CF__c);
+                }
+                if(oli.Product2.Alt_UoM2__c != null && oli.Product2.Alt_UoM2_CF__c != null){
+                    altUOMs.put(oli.Product2.Alt_UoM2__c,oli.Product2.Alt_UoM2_CF__c);
+                }
+                if(oli.Product2.Alt_UoM3__c != null && oli.Product2.Alt_UoM3_CF__c != null){
+                    altUOMs.put(oli.Product2.Alt_UoM3__c,oli.Product2.Alt_UoM3_CF__c);
+                }    
+            }
+            
+            if(altUOMs != null){
+                oliProductWrapper.altUOMs = altUOMs; 
+            }
+            
+            oliProductWrapper.selectedUOM = oli.Selected_UOM__c;
+            for(OpportunityLineItemSchedule olis : oli.OpportunityLineItemSchedules)
+            {
+                
+                if(screen == 'Monthly'){
+                    isActualFreezed = false ;
+                    isForecastFreezed = false;
+                    
+                    if(dueDateMap != null && dueDateMap.containskey(olis.Month__c+'_'+olis.Year__c)) {
+                        isForecastFreezed =  system.today() > dueDateMap.get(olis.Month__c+'_'+olis.Year__c).Due_Date__c ? true : false;                     
+                        isActualFreezed =  ((system.today() > dueDateMap.get(olis.Month__c+'_'+olis.Year__c).ActualsDueDate__c && olis.Month__c == monthName) || olis.Month__c != monthName)    ? true : false;//
+                        //isActualFreezed =  ((system.today() > dueDateMap.get(olis.Month__c+'_'+olis.Year__c).ActualsDueDate__c) ||  (Integer.valueOf(monthsNumMap.get(olis.Month__c)) > Integer.valueOf(monthsNumMap.get(monthName))))  ? true : false;//&& (olis.Month__c == monthName)) || (olis.Month__c != monthName)          
+                        
+                    }
+                    system.debug('dueDateMap=='+dueDateMap);
+                    
+                }
+                
+                //OLI
+                for(String inp : accClassMap.keySet())
+                { 
+                    //Sell In Sales Plan
+                    for(String inp2 : inputValuesMap.get(inp))
+                    {       
+                        //Sell In Sales Plan - cyvolume, cyvalue
+                        oliProductScheduleWrapper = new gsfpClsSalesplanWrapper.OLISChildWrapper();
+                        oliProductScheduleWrapper.isVisible =true;
+                        if(inp2.contains(fy)){
+                            OLISKey = oli.Opportunity.AccountId+'_'+oli.Product2Id;
+                            if(screen == 'Quarterly'){
+                                OLISKey = OLISKey+'_'+olis.Quarter_Name__c;
+                            } else {
+                                OLISKey = OLISKey+'_'+olis.Month__c;
+                            }
+                            oliProductScheduleWrapper.OLISId = fsfOlisMap.containsKey(OLISKey) ? fsfOlisMap.get(OLISKey).Id : null;
+                            oliProductScheduleWrapper.netPrice = fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.PSPTP_NetPrice__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.PSPTP_NetPrice__c : 0;
+                            isFutAPSubmitted = fsfOlisMap.containsKey(OLISKey) && (fsfOlisMap.get(OLISKey).OpportunityLineItem.Opportunity.Sales_Manager_Approval_Status__c == 'Submitted' || fsfOlisMap.get(OLISKey).OpportunityLineItem.Opportunity.Sales_Manager_Approval_Status__c == 'Approved') ? true : false;
+                            isFutFSFSubmitted = fsfOlisMap.containsKey(OLISKey) && (fsfOlisMap.get(OLISKey).OpportunityLineItem.Opportunity.FSF_Approval_Status__c == 'Submitted' || fsfOlisMap.get(OLISKey).OpportunityLineItem.Opportunity.FSF_Approval_Status__c == 'Approved') ? true : false;
+                            if(salesTargetMap != null)
+                                oliProductWrapper.futSalesTarget = fsfOlisMap.containsKey(OLISKey) && salesTargetMap.containsKey(fsfOlisMap.get(OLISKey).OpportunityLineItem.Products_Services_Portfolio_To_Product__c) ? salesTargetMap.get(fsfOlisMap.get(OLISKey).OpportunityLineItem.Products_Services_Portfolio_To_Product__c) : new gsfpClsAccProdDistributionUtility.SalesTargetWrapper(0,0,0,0,oli.Product2.QuantityUnitOfMeasure,0,0);
+                        }else {
+                            oliProductScheduleWrapper.OLISId = olis.Id;
+                            oliProductScheduleWrapper.netPrice = oli.PSPTP_NetPrice__c != null ? oli.PSPTP_NetPrice__c : 0;
+                        }
+                        
+                        oliProductScheduleWrapper.input = inp;
+                        oliProductScheduleWrapper.inputLabel = accClassMap.get(inp);
+                        oliProductScheduleWrapper.row = inp2;
+                        oliProductScheduleWrapper.rowLabel =  accClassMap.get(inp) +';'+ inp2;
+                        oliProductScheduleWrapper.isActualsClosed = (dueDateMap != null && dueDateMap.containskey(olis.Month__c+'_'+olis.Year__c)) ? (system.today() > dueDateMap.get(olis.Month__c+'_'+olis.Year__c).ActualsDueDate__c ? true : false):false;
+                        if(screen == 'Quarterly'){
+                            oliProductScheduleWrapper.quarter = olis.Quarter_Name__c;//+' ('+olis.Year__c+')';
+                            typeValue =  olis.Quarter_Name__c;
+                        } else {
+                            oliProductScheduleWrapper.month = olis.Month__c.substring(0,3);//+' ('+olis.Year__c+')';
+                            typeValue =  olis.Month__c.substring(0,3);
+                        }
+                        
+                        uom = inp2.contains('Value') ? currUOMMdt.Currency_ISO_Code__c : oli.Selected_UOM__c != null ? oli.Selected_UOM__c : oli.Product2.QuantityUnitOfMeasure;
+                        
+                        if(inp2.contains(cy)) {
+                            if(inp == 'Sell_In_Sales_Plan'){
+                                if(inp2 == cyValue){
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, oli.Planned_Sell_In_Qty__c != null ? oli.Planned_Sell_In_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                } else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Planned_Sell_In_Qty__c != null ? olis.Planned_Sell_In_Qty__c : 0, true, typeValue, screen != 'Quarterly' && isSellInAPMet == true && isCurrAPSubmitted == false ? true : false, olis.Id, uom, oli.Planned_Sell_In_Qty__c);
+                                }
+                            } else if (inp == 'Sell_In_Actuals') {
+                                //oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0 , true, typeValue, false, olis.Id, uom, 0);
+                                if (inp2 == cyVolume)
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'D') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'D').netSalesUnits : 0 , true, typeValue, false, olis.Id, uom, 0);
+                                else if (inp2 == cyValue)
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'D') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'D').netSalesAmount : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            }
+                            else if(inp == 'Sell_In_Forecast') {
+                                if(inp2 == cyISFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, olis.Id, uom,oli.Forecast_Qty__c != null ? oli.Forecast_Qty__c  * oliProductScheduleWrapper.netPrice : 0);// oli.ISF_Sell_In_Amount__c
+                                else if (inp2 == cyISFVolume)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.Forecast_Qty__c != null ? olis.Forecast_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isSellInISFMet == true && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Forecast_Qty__c);
+                                else if (inp2 == cyFSFVolume)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.FSF_Sell_In_Quantity__c != null ? olis.FSF_Sell_In_Quantity__c : 0, true, typeValue, false, olis.Id, uom, oli.FSF_Sell_In_Qty__c);
+                                else if (inp2 == cyFSFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom,oli.FSF_Sell_In_Qty__c != null ? oli.FSF_Sell_In_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                            } else if(inp == 'Sell_In_Upsides') {
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Upsides_Above_Allocation_Sell_In__c != null ? olis.Upsides_Above_Allocation_Sell_In__c : 0, true, typeValue,screen != 'Quarterly' && isSellInISFMet == true  && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Upsides_Above_Allocation_Sell_In__c);
+                            } else if(inp == 'Sell_Out_Upsides') {
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Upsides_Above_Allocation_Sell_Out__c != null ? olis.Upsides_Above_Allocation_Sell_Out__c : 0, true,typeValue,screen != 'Quarterly' && isSellOutISFMet == true  && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Upsides_Above_Allocation_Sell_Out__c);
+                            } else if(inp == 'Returns_Forecast') {
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Returns_Forecast__c != null ? olis.Returns_Forecast__c : 0, true, typeValue,screen != 'Quarterly' && isSellInISFMet == true  && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Returns_Forecast__c);
+                            } else if(inp == 'Returns_Actuals') {
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0 , true, typeValue, false, olis.Id, uom, 0);
+                            } else if(inp == 'Inventory_Forecast'){
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Inventory_Qty__c , true, typeValue, false, olis.Id, uom, oli.Inventory_Qty__c);
+                            } else if(inp == 'Inventory_Actuals'){
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Actual_Inventory_Qty__c != null ? olis.Actual_Inventory_Qty__c : 0 , true, typeValue, screen != 'Quarterly' && isSellInISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, oli.Actual_Inventory_Qty__c);
+                            } else if(inp == 'Sell_Out_Sales_Plan') {
+                                if(inp2 == cyValue) {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom,oli.Planned_Sell_Out_Qty__c != null ? oli.Planned_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                }
+                                else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Planned_Sell_Out_Qty__c != null ? olis.Planned_Sell_Out_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isSellOutAPMet == true && isCurrAPSubmitted == false ? true : false, olis.Id, uom, oli.Planned_Sell_Out_Qty__c);
+                                }
+                                
+                            } 
+                            else if (inp == 'Sell_Out_Actuals') {
+                                // oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0 , true, typeValue, false, olis.Id, uom, 0);Actual_Inventory_Qty__c
+                                // pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') : 0
+                                
+                                if (inp2 == cySellOutVolumeTotal){                                    
+                                   
+                                       sellOutManual= pyManualAccSalesMap!=null && pyManualAccSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I') ? pyManualAccSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I') : pyManualSalesMap != null && pyManualSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I') ? (Decimal) pyManualSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I').get('salesQty') : 0; 
+                                       sellOutManualtotal= pyManualAccSalesMapTotal!=null && pyManualAccSalesMapTotal.containsKey(prevBaseKey+'_'+currentYear+'_I') ? pyManualAccSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_I') : pyManualSalesMapTotal!=null && pyManualSalesMapTotal.containsKey(prevBaseKey+'_'+currentYear+'_I') ? (Decimal) pyManualSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_I').get('salesQty') : 0; 
+                                       sellOutExternal =pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').netSalesUnits : 0;
+                                       sellOutExternalTotal =cySalesMapTotal != null && cySalesMapTotal.containsKey(prevBaseKey+'_'+currentYear+'_I') ? (Decimal) cySalesMapTotal.get(prevBaseKey+'_'+currentYear+'_'+'I').netSalesUnits: 0;
+                                       selloutTotal  = sellOutManualtotal + sellOutExternalTotal;                                       
+                                       currTotal=sellOutManual+sellOutExternal;                                       
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(currTotal!=null ? currTotal : 0, true, typeValue, false, olis.Id, uom,selloutTotal!=null ?selloutTotal:0 );//pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') : 0                                        
+                                }
+                                
+                                else if (inp2 == cyVolume){
+                                    if(pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I')){
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis((Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').netSalesUnits , true, typeValue,false, olis.Id, uom, 0);//pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') : 0
+                                    }else{
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, olis.Id, uom, 0);
+                                    }
+                                }
+                                
+                                else if (inp2 == cyVolumeManual){
+                                    if(pyManualAccSalesMap != null && pyManualAccSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I')){
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pyManualAccSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I') , true, typeValue,screen != 'Quarterly' && isSellOutISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, 0);
+                                    }
+                                    else if(pyManualSalesMap != null && pyManualSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I')){
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis((Decimal) pyManualSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I').get('salesQty') , true, typeValue,screen != 'Quarterly' && isSellOutISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, 0);
+                                    }else{
+                                        if(pyManualAccSalesMapTotal!=null && pyManualAccSalesMapTotal.containskey(prevBaseKey+'_'+currentYear+'_'+'I')){
+                                            oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,screen != 'Quarterly' && isSellOutISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, pyManualAccSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_'+'I'));  
+                                        }else if(pyManualSalesMapTotal!=null && pyManualSalesMapTotal.containskey(prevBaseKey+'_'+currentYear+'_'+'I')){
+                                            oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,screen != 'Quarterly' && isSellOutISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, (Decimal) pyManualSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_'+'I').get('salesQty'));  
+                                        }else{
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,screen != 'Quarterly' && isSellOutISFMet == true && isActualFreezed == false ? true : false, olis.Id, uom, 0);
+                                    }
+                                    }
+                                }else if (inp2 == cySellOutValueTotal){
+                                    sellOutManual= pyManualAccSalesMap!=null && pyManualAccSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I') ? pyManualAccSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I') : pyManualSalesMap != null && pyManualSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I') ? (Decimal) pyManualSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I').get('salesQty') : 0; 
+                                    sellOutManualtotal= pyManualAccSalesMapTotal!=null && pyManualAccSalesMapTotal.containsKey(prevBaseKey+'_'+currentYear+'_I') ? pyManualAccSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_I') : pyManualSalesMapTotal!=null && pyManualSalesMapTotal.containsKey(prevBaseKey+'_'+currentYear+'_I') ? (Decimal) pyManualSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_I').get('salesQty') : 0; 
+                                    sellOutExternal =pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').netSalesUnits : 0;
+                                    sellOutExternalTotal =cySalesMapTotal != null && cySalesMapTotal.containsKey(prevBaseKey+'_'+currentYear+'_I') ? (Decimal) cySalesMapTotal.get(prevBaseKey+'_'+currentYear+'_'+'I').netSalesUnits : 0;
+                                    selloutTotal  = sellOutManualtotal + sellOutExternalTotal; 
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, selloutTotal !=null ? selloutTotal * oliProductScheduleWrapper.netPrice : 0);
+                                }else if(inp2 == cyValue){
+                                    if(cySalesMap != null && cySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I')){                                        
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, (Decimal) cySalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I').get('salesQty') !=null ? (Decimal) cySalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I').get('salesQty') * oliProductScheduleWrapper.netPrice : 0);
+                                    }else{
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom,0);
+                                    }                                    
+                                }else if(inp2 == cyValueManual){
+                                    if(pyManualAccSalesMap != null && pyManualAccSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I')){
+                                        oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom,  pyManualAccSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I') !=null ?  pyManualAccSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_I') * oliProductScheduleWrapper.netPrice : 0);
+                                    }
+                                    else if(pyManualSalesMap != null && pyManualSalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I')){
+                                         oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, (Decimal) pyManualSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I').get('salesQty') !=null ? (Decimal) pyManualSalesMap.get(prevBaseKey+'_'+currentYear+'_'+(typeValue).toUpperCase()+'_'+'I').get('salesQty') * oliProductScheduleWrapper.netPrice : 0);
+                                    }else{                                       
+                                        if(pyManualAccSalesMapTotal!=null && pyManualAccSalesMapTotal.containskey(prevBaseKey+'_'+currentYear+'_'+'I')){
+                                             oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, pyManualAccSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_I') !=null ? pyManualAccSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_I') * oliProductScheduleWrapper.netPrice : 0);
+                                        }else if(pyManualSalesMapTotal!=null && pyManualSalesMapTotal.containskey(prevBaseKey+'_'+currentYear+'_'+'I')){
+                                             oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, (Decimal) pyManualSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_I').get('salesQty')  !=null ? (Decimal) pyManualSalesMapTotal.get(prevBaseKey+'_'+currentYear+'_I').get('salesQty')  * oliProductScheduleWrapper.netPrice : 0);
+                                        }else{
+                                             oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, oli.Actual_Sell_Out_Qty__c !=null ? oli.Actual_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                        }
+                                    }                                        
+                                } else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, olis.Id, uom, oli.Actual_Sell_Out_Qty__c !=null ? oli.Actual_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);//pySalesMap != null && pySalesMap.containsKey(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I') ? (Decimal) pySalesMap.get(prevBaseKey+'_'+currentYear+'_'+typeValue+'_'+'I').get('salesQty') : 0                                        
+                                }
+                                
+                                
+                            }
+                            else if(inp == 'Sell_Out_Forecast') {
+                                if(inp2 == cyISFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, olis.Id, uom, oli.Sell_Out_Qty__c != null ? oli.Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                else if (inp2 == cyISFVolume) 
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.Sell_Out_Qty__c != null ? olis.Sell_Out_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isSellOutISFMet == true && isForecastFreezed == false ? true : false, olis.Id, uom, oli.Sell_Out_Qty__c);  
+                                else if (inp2 == cyFSFVolume)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(olis.FSF_SellOut__c != null ? olis.FSF_SellOut__c : 0, true, typeValue, false, olis.Id, uom, oli.FSF_Sell_Out_Qty__c);
+                                else if (inp2 == cyFSFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, olis.Id, uom, oli.FSF_Sell_Out_Qty__c != null ? oli.FSF_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice :0);
+                            } else if(inp == 'POG') { 
+                                if (inp2 == cyVolume){
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.POG_Actuals_Qty__c !=null ? olis.POG_Actuals_Qty__c : 0 , true, typeValue, false, olis.Id, uom, oli.POG_Actuals_Qty__c !=null ? oli.POG_Actuals_Qty__c: 0);
+                                } else if (inp2 == cyValue){ 
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.POG_Actuals_Qty__c != null ? olis.POG_Actuals_Qty__c : 0 , true, typeValue, false, olis.Id, uom, oli.POG_Actuals_Qty__c !=null ? oli.POG_Actuals_Qty__c* oliProductScheduleWrapper.netPrice : 0);
+                                }
+                           }   
+                           //Import & Export - Starts
+                           /*else if(inp == 'Import') { 
+                                if (inp2 == cyVolume){
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Import_Qty_Nbr__c!=null ? olis.Import_Qty_Nbr__c:0, true, typeValue, false, olis.Id, uom, oli.Import_Qty_Nbr__c!=null ? oli.Import_Qty_Nbr__c:0);
+                                } else if (inp2 == cyValue){ 
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Import_Qty_Nbr__c!=null ? olis.Import_Qty_Nbr__c:0, true, typeValue, false, olis.Id, uom,oli.Import_Qty_Nbr__c!=null ? oli.Import_Qty_Nbr__c*oliProductScheduleWrapper.netPrice:0);
+                                }
+                           }   
+                           else if(inp == 'Export') { 
+                              if (inp2 == cyVolume){
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Export_Qty_Nbr__c!=null ? olis.Export_Qty_Nbr__c:0, true, typeValue, false, olis.Id, uom, oli.Export_Qty_Nbr__c!=null ? oli.Export_Qty_Nbr__c:0);
+                                } else if (inp2 == cyValue){ 
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.Export_Qty_Nbr__c!=null ? olis.Export_Qty_Nbr__c:0, true, typeValue, false, olis.Id, uom,oli.Export_Qty_Nbr__c!=null ? oli.Export_Qty_Nbr__c*oliProductScheduleWrapper.netPrice:0);
+                                }
+                           }   
+                             else if(inp == 'Sell_Out_Adjusted') { 
+                              if (inp2 == cyVolume){
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.fAdjusted_Sell_Out_Qty__c!=null ? olis.fAdjusted_Sell_Out_Qty__c:0, true, typeValue, false, olis.Id, uom, 0);
+                                } else if (inp2 == cyValue){ 
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(olis.fAdjusted_Sell_Out_Qty__c!=null ? olis.fAdjusted_Sell_Out_Qty__c:0, true, typeValue, false, olis.Id, uom,0);
+                                }
+                           }*/
+                           //Import & Export - Ends 
+                        } 
+                        else if(inp2.contains(fy)){                        
+                            if(inp == 'Sell_In_Forecast'){
+                                if(inp2 == fyFSFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                else
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).FSF_Sell_In_Quantity__c != null ?  fsfOlisMap.get(OLISKey).FSF_Sell_In_Quantity__c : 0, true, typeValue,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Is_FSF_Freezed__c == false && isSellInCy1FSFMet == true && isFutFSFSubmitted == false ? true : false,oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c : 0);//fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_In_Qty__c : 0);
+                            }
+                            
+                            else if(inp == 'Sell_Out_Forecast'){
+                                if(inp2 == fyFSFValue)
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue,false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                else
+                                    oliProductScheduleWrapper.value =  new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).FSF_SellOut__c != null ?  fsfOlisMap.get(OLISKey).FSF_SellOut__c : 0, true, typeValue,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Is_FSF_Freezed__c == false && isSellInCy1FSFMet == true && isFutFSFSubmitted == false ? true : false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c : 0); //fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.FSF_Sell_Out_Qty__c : 0);
+                            }
+                            
+                            else if (inp == 'Sell_In_Sales_Plan'){
+                                if(inp2 == fyvalue){
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                } else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Planned_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).Planned_Sell_In_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isSellInCy1APMet == true && isFutAPSubmitted == false ? true : false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_In_Qty__c : 0);
+                                }
+                            } else if(inp == 'Sell_Out_Sales_Plan') {
+                                if(inp2 == fyvalue) {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0, true, typeValue, false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Qty__c * oliProductScheduleWrapper.netPrice : 0);
+                                }
+                                else {
+                                    oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).Planned_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).Planned_Sell_Out_Qty__c : 0, true, typeValue,screen != 'Quarterly' && isSellInCy1APMet == true && isFutAPSubmitted == false ? true : false, oliProductScheduleWrapper.OLISId, uom,fsfOlisMap.containsKey(OLISKey) && fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Qty__c != null ? fsfOlisMap.get(OLISKey).OpportunityLineItem.Planned_Sell_Out_Qty__c : 0);
+                                }
+                                
+                            }
+                        }
+                        else if(inp == 'Sell_Out_Actuals' || inp == 'Sell_In_Actuals') {
+                            system.debug('pySalesMap=='+pySalesMap);
+                            system.debug('prevKeys=='+prevKeys[0]+'_'+typeValue+'_'+'I');
+                            system.debug('inp2=='+inp2);
+                            String ind = inp == 'Sell_Out_Actuals' ? 'I' : 'D';
+                            if(inp2 == pyVolume)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[0]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[0]+'_'+typeValue+'_'+ind).netSalesUnits : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == pyValue)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[0]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[0]+'_'+typeValue+'_'+ind).netSalesAmount : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == py2Volume)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[1]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[1]+'_'+typeValue+'_'+ind).netSalesUnits : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == py2Value)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[1]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[1]+'_'+typeValue+'_'+ind).netSalesAmount : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == py3Volume)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[2]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[2]+'_'+typeValue+'_'+ind).netSalesUnits : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            else if(inp2 == py3Value)
+                                oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(pySalesMap != null && pySalesMap.containsKey(prevKeys[2]+'_'+typeValue+'_'+ind) ? (Decimal) pySalesMap.get(prevKeys[2]+'_'+typeValue+'_'+ind).netSalesAmount : 0 , true, typeValue, false, olis.Id, uom, 0);
+                            
+                            
+                        }
+                        else {
+                            oliProductScheduleWrapper.value = new gsfpClsSalesplanWrapper.dataOlis(0 , true, typeValue, false, olis.Id, uom, 0);
+                        }
+                        // oliProductScheduleWrapper.value =new gsfpClsSalesplanWrapper.dataOlis(5000 , true, typeValue, false, olis.Id, uom, 0);
+                        olisProductInfoSchLst.add(oliProductScheduleWrapper);
+                    } //for loop 
+                } //Keyset map loop
+            }//OLIS loop
+            oliProductWrapper.OLIS = olisProductInfoSchLst;
+            oliProductLst.add(oliProductWrapper);            
+        }
+        return oliProductLst;   
+        /*}  catch(Exception ex) { 
+errorMessage='Error in generateOLISForAccount=='+ ex.getMessage()+'==ON Line== '+ex.getLineNumber();
+system.debug(LoggingLevel.DEBUG,errorMessage);
+throw new AurahandledException(errorMessage);
+}*/       
+    }

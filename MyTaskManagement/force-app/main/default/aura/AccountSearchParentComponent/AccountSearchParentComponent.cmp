@@ -1,0 +1,16 @@
+<aura:component controller="FetchAccountClass" implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId" access="global" >
+    <c:AccountSearchComponent/>
+    <aura:attribute name="accList" type="List"/>
+    <aura:handler name="InputCarryEvent" event="c:InputCarryEvent" action="{!c.reloadData}"/>
+    <aura:iteration items="{!v.accList}" var="acc">
+    	<lightning:card footer="Card Footer" title="Accounts">
+            <p class="slds-p-horizontal-small">
+                {!acc.Name}
+
+                    <lightning:button name="Details" label= "Details" value="{!acc.Id}" onclick="{!c.goToRecord}"/>
+
+            </p>
+
+        </lightning:card>                                     
+    </aura:iteration>
+</aura:component>
